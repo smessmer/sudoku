@@ -1,4 +1,5 @@
 use bitvec::prelude::*;
+use std::num::NonZeroU8;
 
 use crate::board::{NUM_FIELDS, WIDTH, HEIGHT, Board};
 
@@ -22,41 +23,42 @@ impl PossibleValues {
         NUM_VALUES_PER_FIELD * (x * HEIGHT + y)
     }
 
-    fn index(x: usize, y: usize, value: u8) -> usize {
-        assert!(value >= 1 && value <= 9);
+    fn index(x: usize, y: usize, value: NonZeroU8) -> usize {
+        assert!(value.get() <= 9);
         let start_index = Self::field_start_index(x, y) - 1;
-        start_index + usize::from(value)
+        start_index + usize::from(value.get())
     }
 
-    pub fn possible_values_for_field(&self, x: usize, y: usize) -> impl Iterator<Item = u8> + '_ {
+    pub fn possible_values_for_field(&self, x: usize, y: usize) -> impl Iterator<Item = NonZeroU8> + '_ {
         let start_index = Self::field_start_index(x, y) - 1;
         (1u8..=9u8).filter(move |i| self.values[start_index + usize::from(*i)])
+            .map(|i| NonZeroU8::new(i).unwrap())
     }
 
-    fn remove_if_set(&mut self, x: usize, y: usize, value: u8) {
+    fn remove_if_set(&mut self, x: usize, y: usize, value: NonZeroU8) {
         let index = Self::index(x, y, value);
         self.values.set(index, false);
     }
 
-    pub fn remove_conflicting(&mut self, x: usize, y: usize, value: u8) {
+    pub fn remove_conflicting(&mut self, x: usize, y: usize, value: NonZeroU8) {
         self.remove_value_from_col(value, x);
         self.remove_value_from_row(value, y);
         self.remove_value_from_cell(value, x/3, y/3);
     }
 
-    fn remove_value_from_col(&mut self, value: u8, x: usize) {
+    fn remove_value_from_col(&mut self, value: NonZeroU8, x: usize) {
         for y in 0..HEIGHT {
             self.remove_if_set(x, y, value);
         }
     }
     
-    fn remove_value_from_row(&mut self, value: u8, y: usize) {
+    fn remove_value_from_row(&mut self, value: NonZeroU8, y: usize) {
         for x in 0..WIDTH {
             self.remove_if_set(x, y, value);
         }
     }
     
-    fn remove_value_from_cell(&mut self, value: u8, cell_x: usize, cell_y: usize) {
+    fn remove_value_from_cell(&mut self, value: NonZeroU8, cell_x: usize, cell_y: usize) {
         for x in 0..3 {
             for y in 0..3 {
                 self.remove_if_set(3 * cell_x + x, 3 * cell_y + y, value);
@@ -92,10 +94,10 @@ impl SolverBoard {
         &self.possible_values
     }
 
-    pub fn set(&mut self, x: usize, y: usize, value: u8) {
+    pub fn set(&mut self, x: usize, y: usize, value: NonZeroU8) {
         let mut field = self.board.field_mut(x, y);
         assert!(field.is_empty(), "SolverBoard.set() is only allowed on empty fields, otherwise we would violate the invariant or would have to re-add some possible values from removing the field");
-        field.set(value);
+        field.set(Some(value));
         self.possible_values.remove_conflicting(x, y, value);
 
     }
@@ -106,8 +108,7 @@ fn possible_values_from_board(board: &Board) -> PossibleValues {
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
             let field = board.field(x, y);
-            if !field.is_empty() {
-                let value = field.get();
+            if let Some(value) = field.get() {
                 possible_values.remove_conflicting(x, y, value);
             }
         }
