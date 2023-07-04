@@ -84,6 +84,27 @@ impl Board {
         }
     }
 
+    #[cfg(test)]
+    pub fn from_str(board: &str) -> Self {
+        let mut chars = board.chars().filter(|x| !x.is_whitespace());
+        let mut board = Board::new_empty();
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let c = chars.next().expect("Not enough characters in board string");
+                let value = if c == '_' {
+                    0
+                } else {
+                    let value = c.to_digit(10).expect("Invalid characters in board string");
+                    assert_ne!(0, value);
+                    u8::try_from(value).unwrap()
+                };
+                board.field_mut(x, y).set(value);
+            }
+        }
+        assert_eq!(None, chars.next(), "Too many characters in board string");
+        board
+    }
+
     fn index(x: usize, y: usize) -> (usize, FieldSubindex) {
         assert!(x < WIDTH);
         assert!(y < HEIGHT);
@@ -178,5 +199,114 @@ mod tests {
         let mut board = Board::new_empty();
 
         board.field_mut(0, 0).set(10);
+    }
+
+    #[test]
+    fn from_str() {
+        let board = Board::from_str("
+            124 367 598
+            598 241 36_
+            376 895 412
+
+            832 654 179
+            _51 9_3 846
+            649 718 253
+
+            483 179 625
+            217 536 98_
+            ___ 482 731
+        ");
+        
+        assert_eq!(1, board.field(0, 0).get());
+        assert_eq!(2, board.field(1, 0).get());
+        assert_eq!(4, board.field(2, 0).get());
+        assert_eq!(3, board.field(3, 0).get());
+        assert_eq!(6, board.field(4, 0).get());
+        assert_eq!(7, board.field(5, 0).get());
+        assert_eq!(5, board.field(6, 0).get());
+        assert_eq!(9, board.field(7, 0).get());
+        assert_eq!(8, board.field(8, 0).get());
+
+        assert_eq!(5, board.field(0, 1).get());
+        assert_eq!(9, board.field(1, 1).get());
+        assert_eq!(8, board.field(2, 1).get());
+        assert_eq!(2, board.field(3, 1).get());
+        assert_eq!(4, board.field(4, 1).get());
+        assert_eq!(1, board.field(5, 1).get());
+        assert_eq!(3, board.field(6, 1).get());
+        assert_eq!(6, board.field(7, 1).get());
+        assert_eq!(0, board.field(8, 1).get());
+
+        assert_eq!(3, board.field(0,2).get());
+        assert_eq!(7, board.field(1,2).get());
+        assert_eq!(6, board.field(2,2).get());
+        assert_eq!(8, board.field(3,2).get());
+        assert_eq!(9, board.field(4,2).get());
+        assert_eq!(5, board.field(5,2).get());
+        assert_eq!(4, board.field(6,2).get());
+        assert_eq!(1, board.field(7,2).get());
+        assert_eq!(2, board.field(8,2).get());
+
+        assert_eq!(8, board.field(0,3).get());
+        assert_eq!(3, board.field(1,3).get());
+        assert_eq!(2, board.field(2,3).get());
+        assert_eq!(6, board.field(3,3).get());
+        assert_eq!(5, board.field(4,3).get());
+        assert_eq!(4, board.field(5,3).get());
+        assert_eq!(1, board.field(6,3).get());
+        assert_eq!(7, board.field(7,3).get());
+        assert_eq!(9, board.field(8,3).get());
+
+        assert_eq!(0, board.field(0,4).get());
+        assert_eq!(5, board.field(1,4).get());
+        assert_eq!(1, board.field(2,4).get());
+        assert_eq!(9, board.field(3,4).get());
+        assert_eq!(0, board.field(4,4).get());
+        assert_eq!(3, board.field(5,4).get());
+        assert_eq!(8, board.field(6,4).get());
+        assert_eq!(4, board.field(7,4).get());
+        assert_eq!(6, board.field(8,4).get());
+
+        assert_eq!(6, board.field(0,5).get());
+        assert_eq!(4, board.field(1,5).get());
+        assert_eq!(9, board.field(2,5).get());
+        assert_eq!(7, board.field(3,5).get());
+        assert_eq!(1, board.field(4,5).get());
+        assert_eq!(8, board.field(5,5).get());
+        assert_eq!(2, board.field(6,5).get());
+        assert_eq!(5, board.field(7,5).get());
+        assert_eq!(3, board.field(8,5).get());
+
+
+        assert_eq!(4, board.field(0,6).get());
+        assert_eq!(8, board.field(1,6).get());
+        assert_eq!(3, board.field(2,6).get());
+        assert_eq!(1, board.field(3,6).get());
+        assert_eq!(7, board.field(4,6).get());
+        assert_eq!(9, board.field(5,6).get());
+        assert_eq!(6, board.field(6,6).get());
+        assert_eq!(2, board.field(7,6).get());
+        assert_eq!(5, board.field(8,6).get());
+
+        assert_eq!(2, board.field(0,7).get());
+        assert_eq!(1, board.field(1,7).get());
+        assert_eq!(7, board.field(2,7).get());
+        assert_eq!(5, board.field(3,7).get());
+        assert_eq!(3, board.field(4,7).get());
+        assert_eq!(6, board.field(5,7).get());
+        assert_eq!(9, board.field(6,7).get());
+        assert_eq!(8, board.field(7,7).get());
+        assert_eq!(0, board.field(8,7).get());
+
+        assert_eq!(0, board.field(0,8).get());
+        assert_eq!(0, board.field(1,8).get());
+        assert_eq!(0, board.field(2,8).get());
+        assert_eq!(4, board.field(3,8).get());
+        assert_eq!(8, board.field(4,8).get());
+        assert_eq!(2, board.field(5,8).get());
+        assert_eq!(7, board.field(6,8).get());
+        assert_eq!(3, board.field(7,8).get());
+        assert_eq!(1, board.field(8,8).get());
+
     }
 }
