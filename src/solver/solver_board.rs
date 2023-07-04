@@ -25,13 +25,13 @@ impl PossibleValues {
 
     fn index(x: usize, y: usize, value: NonZeroU8) -> usize {
         assert!(value.get() <= 9);
-        let start_index = Self::field_start_index(x, y) - 1;
-        start_index + usize::from(value.get())
+        let start_index = Self::field_start_index(x, y);
+        start_index + usize::from(value.get()) - 1
     }
 
     pub fn possible_values_for_field(&self, x: usize, y: usize) -> impl Iterator<Item = NonZeroU8> + '_ {
-        let start_index = Self::field_start_index(x, y) - 1;
-        (1u8..=9u8).filter(move |i| self.values[start_index + usize::from(*i)])
+        let start_index = Self::field_start_index(x, y);
+        (1u8..=9u8).filter(move |i| self.values[start_index + usize::from(*i) - 1])
             .map(|i| NonZeroU8::new(i).unwrap())
     }
 

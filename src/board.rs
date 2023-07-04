@@ -1,5 +1,6 @@
 use crate::utils::div_ceil;
 use std::num::NonZeroU8;
+use std::fmt::{self, Debug};
 
 pub const WIDTH: usize = 9;
 pub const HEIGHT: usize = 9;
@@ -10,7 +11,7 @@ const FIELD_EMPTY: u8 = 0;
 
 /// A [Board] is a 9x9 sudoku board.
 /// Each cell can contain a value in 0..=9 where 0 means the cell is empty.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Board {
     // Every byte stores two cells. The first 4 bits the first cell, the second 4 bits the second cell.
     // Cells are ordered by columns, first top-to-bottom, then next column left-to-right
@@ -144,6 +145,26 @@ impl Board {
             }
         }
         None
+    }
+}
+
+impl Debug for Board {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for y in 0..HEIGHT {
+            if y == 3 || y == 6 {
+                // Add a separator line between every 3 rows
+                write!(f, "\n")?;
+            }
+            for x in 0..WIDTH {
+                if x == 3 || x == 6 {
+                    // Add a separate between every 3 cols
+                    write!(f, " ")?;
+                }
+                write!(f, "{}", self.field(x, y).get().map(|c| c.to_string()).unwrap_or_else(|| "_".to_string()))?;
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
     }
 }
 
