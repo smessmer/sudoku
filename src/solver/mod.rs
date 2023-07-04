@@ -8,7 +8,7 @@ const NUM_VALUES_PER_FIELD: usize = 9;
 mod solver_board;
 use solver_board::SolverBoard;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
     #[error("Sudoku is not solvable")]
     NotSolvable,
@@ -16,6 +16,7 @@ pub enum SolverError {
     #[error("Sudoku has multiple valid solutions")]
     Ambigious,
 }
+
 pub fn solve(board: Board) -> Result<Board, SolverError> {
     let board = SolverBoard::new(board);
     _solve(board)
@@ -95,5 +96,43 @@ mod tests {
         ");
         let actual_solution = solve(board).unwrap();
         assert_eq!(expected_solution, actual_solution);
+    }
+
+    #[test]
+    fn not_solvable_difficult() {
+        let board = Board::from_str("
+            __4 68_ _19
+            __3 __9 2_5
+            _6_ ___ __4
+
+            6__ ___ 7_2
+            ___ _27 ___
+            ___ 9__ __1
+
+            8__ _5_ __7
+            _41 3_8 ___
+            _2_ _91 ___
+        ");
+        let actual_solution = solve(board);
+        assert_eq!(Err(SolverError::NotSolvable), actual_solution);
+    }
+
+    #[test]
+    fn ambigious() {
+        let board = Board::from_str("
+            __4 6__ _19
+            __3 __9 2_5
+            _6_ ___ __4
+
+            6__ ___ 7_2
+            ___ __7 ___
+            ___ 9__ __1
+
+            8__ _5_ __7
+            _41 3_8 ___
+            _2_ _91 ___
+        ");
+        let actual_solution = solve(board);
+        assert_eq!(Err(SolverError::Ambigious), actual_solution);
     }
 }
