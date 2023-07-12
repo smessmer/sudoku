@@ -103,6 +103,8 @@ mod tests {
             726 491 538
         ");
         let actual_solution = solve(board).unwrap();
+        assert!(actual_solution.is_filled());
+        assert!(!actual_solution.has_conflicts());
         assert_eq!(expected_solution, actual_solution);
     }
 
@@ -151,5 +153,5 @@ mod tests {
         assert_eq!(Err(SolverError::Ambigious), actual_solution);
     }
 
-    // TODO MOre tests
+    // TODO More tests
 }
