@@ -160,12 +160,12 @@ impl Board {
     }
 
     // TODO Test
-    pub fn cell_iter(
+    pub fn region_iter(
         &self,
-        cell_x: usize,
-        cell_y: usize,
+        region_x: usize,
+        region_y: usize,
     ) -> impl Iterator<Item = FieldRef<&'_ u8>> {
-        (0..3).flat_map(move |x| (0..3).map(move |y| self.field(cell_x * 3 + x, cell_y * 3 + y)))
+        (0..3).flat_map(move |x| (0..3).map(move |y| self.field(region_x * 3 + x, region_y * 3 + y)))
     }
 
     // TODO Test
@@ -180,9 +180,9 @@ impl Board {
                 return true;
             }
         }
-        for cell_x in 0..3 {
-            for cell_y in 0..3 {
-                if self.has_conflicts_in_fields(self.cell_iter(cell_x, cell_y)) {
+        for region_x in 0..3 {
+            for region_y in 0..3 {
+                if self.has_conflicts_in_fields(self.region_iter(region_x, region_y)) {
                     return true;
                 }
             }

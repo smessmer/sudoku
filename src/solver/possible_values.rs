@@ -67,7 +67,7 @@ impl PossibleValues {
     pub fn remove_conflicting(&mut self, x: usize, y: usize, value: NonZeroU8) {
         self.remove_value_from_col(value, x);
         self.remove_value_from_row(value, y);
-        self.remove_value_from_cell(value, x / 3, y / 3);
+        self.remove_value_from_region(value, x / 3, y / 3);
     }
 
     fn remove_value_from_col(&mut self, value: NonZeroU8, x: usize) {
@@ -82,7 +82,7 @@ impl PossibleValues {
         }
     }
 
-    fn remove_value_from_cell(&mut self, value: NonZeroU8, cell_x: usize, cell_y: usize) {
+    fn remove_value_from_region(&mut self, value: NonZeroU8, cell_x: usize, cell_y: usize) {
         for x in 0..3 {
             for y in 0..3 {
                 self.remove_if_set(3 * cell_x + x, 3 * cell_y + y, value);
