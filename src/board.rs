@@ -5,6 +5,7 @@ use std::num::NonZeroU8;
 pub const WIDTH: usize = 9;
 pub const HEIGHT: usize = 9;
 pub const NUM_FIELDS: usize = WIDTH * HEIGHT;
+pub const MAX_VALUE: u8 = 9;
 
 const NUM_BYTES: usize = div_ceil(NUM_FIELDS, 2);
 
@@ -112,20 +113,20 @@ impl Board {
         } else {
             FieldSubindex::SecondHalfByte
         };
-        (index, subindex)
+        (index / 2, subindex)
     }
 
     #[inline]
     pub fn field(&self, x: usize, y: usize) -> FieldRef<&'_ u8> {
         let (index, subindex) = Self::index(x, y);
-        let field = &self.compressed_board[index / 2];
+        let field = &self.compressed_board[index];
         FieldRef { field, subindex }
     }
 
     #[inline]
     pub fn field_mut(&mut self, x: usize, y: usize) -> FieldRef<&'_ mut u8> {
         let (index, subindex) = Self::index(x, y);
-        let field = &mut self.compressed_board[index / 2];
+        let field = &mut self.compressed_board[index];
         FieldRef { field, subindex }
     }
 
