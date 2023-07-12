@@ -1,3 +1,6 @@
+use sudoku::generate;
+
 fn main() {
-    println!("Hello, world!");
+    let board = generate();
+    println!("{:?}", board);
 }
