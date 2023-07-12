@@ -26,13 +26,14 @@ pub fn solve(mut board: Board) -> Result<Board, SolverError> {
     Ok(solution)
 }
 
+// Invariant:
+//  - When `_solve` returns, `board` is unchanged. Any changes made to `board` during execution need to have been undone.
 fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, SolverError> {
     // TODO First try faster mechanisms from C++ solver_easy
 
     match board.first_empty_field_index() {
         None => {
             // No empty fields left. The sudoku is fully solved
-            // TODO Assert the sudoku is valid
             Ok(*board)
         }
         Some((x, y)) => {
@@ -49,19 +50,28 @@ fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, S
                             // We found a solution. Remember it but keep checking for others
                             solution = Some(new_solution);
                         } else {
+                            // Undo changes to board before returning
+                            board.field_mut(x, y).set(None);
+                            
                             // We just found a second solution
                             return Err(SolverError::Ambigious);
                         }
                     },
                     Err(SolverError::Ambigious) => {
+                        // Undo changes to the board before returning
+                        board.field_mut(x, y).set(None);
+
                         return Err(SolverError::Ambigious);
                     }
                     Err(SolverError::NotSolvable) => {
                         // This attempt didn't work out. Continue the loop and try other values.
                     }
                 }
+
+                // Undo changes to the board before next iteration
                 board.field_mut(x, y).set(None);
             }
+
             match solution {
                 Some(solution) => Ok(solution),
                 None => Err(SolverError::NotSolvable),
