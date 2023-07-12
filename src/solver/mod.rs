@@ -6,7 +6,7 @@ mod possible_values;
 
 mod solver;
 mod strategies;
-use solver::Solver;
+use solver::{Generator, Solver};
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
@@ -34,6 +34,11 @@ pub fn solve(board: Board) -> Result<Board, SolverError> {
             }
         }
     }
+}
+
+pub fn generate() -> Board {
+    let mut generator = Generator::new(Board::new_empty());
+    generator.next_solution().unwrap()
 }
 
 #[cfg(test)]
@@ -128,4 +133,13 @@ mod tests {
     }
 
     // TODO More tests
+
+    #[test]
+    fn generate_some() {
+        for _ in 0..100 {
+            let solution = generate();
+            assert!(solution.is_filled());
+            assert!(!solution.has_conflicts());
+        }
+    }
 }

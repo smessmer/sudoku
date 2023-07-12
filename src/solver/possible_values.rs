@@ -53,6 +53,11 @@ impl PossibleValues {
             .map(|i| NonZeroU8::new(i).unwrap())
     }
 
+    pub fn first_possible_value_for_field(&self, x: usize, y: usize) -> Option<NonZeroU8> {
+        // TODO Faster with bit operations that find the first set bit in one assembly instruction?
+        self.possible_values_for_field(x, y).next()
+    }
+
     // TODO Test
     pub fn is_possible(&self, x: usize, y: usize, value: NonZeroU8) -> bool {
         let index = Self::index(x, y, value);

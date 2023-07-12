@@ -1,10 +1,36 @@
+use std::num::NonZeroU8;
+use std::marker::PhantomData;
+use rand::{seq::SliceRandom, thread_rng};
+
 use super::{
     possible_values::PossibleValues,
     strategies::{solve_simple_strategies, SimpleSolverResult},
 };
 use crate::board::Board;
 
-pub struct Solver {
+/// A [Guesser] can be used to parameterize a [SolverImpl] so that it either guesses the first possible value for a field, or a random one.
+/// Guessing random values is useful for generating new sudokus by running the solver on an empty sudoku with random guesses.
+/// For solving a given sudoku, guessing the first possible value is faster.
+pub trait Guesser {
+    fn guess_value(possible_values: &PossibleValues, x: usize, y: usize) -> Option<NonZeroU8>;
+}
+
+pub struct GuessFirstPossibleValue;
+impl Guesser for GuessFirstPossibleValue {
+    fn guess_value(possible_values: &PossibleValues, x: usize, y: usize) -> Option<NonZeroU8> {
+        possible_values.first_possible_value_for_field(x, y)
+    }
+}
+
+pub struct GuessRandomPossibleValue;
+impl Guesser for GuessRandomPossibleValue {
+    fn guess_value(possible_values: &PossibleValues, x: usize, y: usize) -> Option<NonZeroU8> {
+        let values: Vec<NonZeroU8> = possible_values.possible_values_for_field(x, y).collect();
+        values.choose(&mut thread_rng()).copied()
+    }
+}
+
+pub struct SolverImpl<G: Guesser> {
     // [board_stack] contains all the branching points after any given guess, with any simple strategies already applied to add additional deterministic fields.
     // At any point, we can find more solutions by taking the top from the stack and applying more guesses, until we get to a fully solved sudoku.
     // When a fully solved sudoku is found, or there are no possible solutions for the top board of the stack, then we should backtrack by removing the top board from the stack.
@@ -12,13 +38,16 @@ pub struct Solver {
     // The PossibleValues part of the tuple is equivalent to [PossibleValues::from_board](board), with the difference that we removed values we already guessed to
     // create previous solutions. This ensures we don't guess the same value again after backtracking.
     board_stack: Vec<(Board, PossibleValues)>,
+
+    _g: PhantomData<G>,
 }
 
-impl Solver {
+impl <G: Guesser> SolverImpl<G> {
     pub fn new(board: Board) -> Self {
         let possible_values = PossibleValues::from_board(&board);
         let mut res = Self {
             board_stack: vec![],
+            _g: PhantomData,
         };
         res.push(board, possible_values);
         res
@@ -56,7 +85,7 @@ impl Solver {
                 return Some(board);
             }
             Some((x, y)) => {
-                match possible_values.possible_values_for_field(x, y).next() {
+                match G::guess_value(&possible_values, x, y) {
                     None => {
                         // No possible values left for this field. This means that the board on top doesn't have any more solutions.
                         // Remove it and continue guessing for boards below it.
@@ -85,12 +114,15 @@ impl Solver {
     }
 }
 
+pub type Solver = SolverImpl<GuessFirstPossibleValue>;
+pub type Generator = SolverImpl<GuessRandomPossibleValue>;
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn ambigious() {
+    fn solve_ambigious() {
         let board = Board::from_str(
             "
             __4 6__ _19
@@ -122,5 +154,5 @@ mod tests {
         assert_eq!(10, solutions.len());
     }
 
-    // TODO More tests
+    // TODO More tests, including generating based on half-solved sudokus
 }
