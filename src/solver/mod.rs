@@ -3,9 +3,10 @@ use thiserror::Error;
 use super::board::Board;
 
 mod possible_values;
-use possible_values::PossibleValues;
 
+mod solver;
 mod strategies;
+use solver::Solver;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
@@ -16,67 +17,17 @@ pub enum SolverError {
     Ambigious,
 }
 
-pub fn solve(mut board: Board) -> Result<Board, SolverError> {
-    let possible_values = PossibleValues::from_board(&board);
-    let solution = _solve(&mut board, possible_values)?;
-    assert!(solution.is_filled());
-    assert!(!solution.has_conflicts());
-    Ok(solution)
-}
-
-// Invariant:
-//  - When `_solve` returns, `board` is unchanged. Any changes made to `board` during execution need to have been undone.
-fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, SolverError> {
-    if let Some((mut board, possible_values)) = strategies::solve_simple_strategies(*board, possible_values)? {
-        // Note: calling _solve here means that in it, we re-run _solve_simple_strategies again. It's possible that it'll find more things based on the changed board.
-        return _solve(&mut board, possible_values);
-    }
-
-    match board.first_empty_field_index() {
-        None => {
-            // No empty fields left. The sudoku is fully solved
-            Ok(*board)
-        }
-        Some((x, y)) => {
-            let mut solution = None;
-            for value in possible_values.possible_values_for_field(x, y) {
-                let mut field = board.field_mut(x, y);
-                assert!(field.is_empty());
-                field.set(Some(value));
-                debug_assert!(!board.has_conflicts());
-                let mut new_possible_values = possible_values;
-                new_possible_values.remove_conflicting(x, y, value);
-                match _solve(board, new_possible_values) {
-                    Ok(new_solution) => {
-                        if solution.is_none() {
-                            // We found a solution. Remember it but keep checking for others
-                            solution = Some(new_solution);
-                        } else {
-                            // Undo changes to board before returning
-                            board.field_mut(x, y).set(None);
-
-                            // We just found a second solution
-                            return Err(SolverError::Ambigious);
-                        }
-                    }
-                    Err(SolverError::Ambigious) => {
-                        // Undo changes to the board before returning
-                        board.field_mut(x, y).set(None);
-
-                        return Err(SolverError::Ambigious);
-                    }
-                    Err(SolverError::NotSolvable) => {
-                        // This attempt didn't work out. Continue the loop and try other values.
-                    }
-                }
-
-                // Undo changes to the board before next iteration
-                board.field_mut(x, y).set(None);
-            }
-
-            match solution {
-                Some(solution) => Ok(solution),
-                None => Err(SolverError::NotSolvable),
+pub fn solve(board: Board) -> Result<Board, SolverError> {
+    let mut solver = Solver::new(board);
+    match solver.next_solution() {
+        None => Err(SolverError::NotSolvable),
+        Some(solution) => {
+            if solver.next_solution().is_some() {
+                Err(SolverError::Ambigious)
+            } else {
+                assert!(solution.is_filled());
+                assert!(!solution.has_conflicts());
+                Ok(solution)
             }
         }
     }

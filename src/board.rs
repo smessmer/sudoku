@@ -165,7 +165,8 @@ impl Board {
         region_x: usize,
         region_y: usize,
     ) -> impl Iterator<Item = FieldRef<&'_ u8>> {
-        (0..3).flat_map(move |x| (0..3).map(move |y| self.field(region_x * 3 + x, region_y * 3 + y)))
+        (0..3)
+            .flat_map(move |x| (0..3).map(move |y| self.field(region_x * 3 + x, region_y * 3 + y)))
     }
 
     // TODO Test

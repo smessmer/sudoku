@@ -59,6 +59,13 @@ impl PossibleValues {
         self.values[index]
     }
 
+    // TODO Test
+    pub fn remove(&mut self, x: usize, y: usize, value: NonZeroU8) {
+        let index = Self::index(x, y, value);
+        assert!(self.values[index]);
+        self.values.set(index, false);
+    }
+
     fn remove_if_set(&mut self, x: usize, y: usize, value: NonZeroU8) {
         let index = Self::index(x, y, value);
         self.values.set(index, false);
