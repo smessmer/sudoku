@@ -2,8 +2,8 @@ use thiserror::Error;
 
 use super::board::Board;
 
-mod solver_board;
-use solver_board::PossibleValues;
+mod possible_values;
+use possible_values::PossibleValues;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
