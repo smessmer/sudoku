@@ -36,7 +36,7 @@ pub fn solve(board: Board) -> Result<Board, SolverError> {
     }
 }
 
-pub fn generate() -> Board {
+pub fn generate_solved() -> Board {
     Generator::new().generate()
 }
 
@@ -134,9 +134,9 @@ mod tests {
     // TODO More tests
 
     #[test]
-    fn generate_some() {
+    fn generate_solved_100() {
         for _ in 0..100 {
-            let solution = generate();
+            let solution = generate_solved();
             assert!(solution.is_filled());
             assert!(!solution.has_conflicts());
         }

@@ -221,6 +221,19 @@ impl Board {
         }
         return true;
     }
+
+    // TODO Test
+    pub fn num_empty(&self) -> usize {
+        let mut num_empty = 0;
+        for x in 0..WIDTH {
+            for y in 0..HEIGHT {
+                if self.field(x,y).is_empty() {
+                    num_empty += 1;
+                }
+            }
+        }
+        num_empty
+    }
 }
 
 impl Debug for Board {
