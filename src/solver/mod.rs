@@ -1,12 +1,12 @@
-use thiserror::Error;
 use bitvec::prelude::*;
+use thiserror::Error;
 
-use super::board::{NUM_FIELDS, WIDTH, HEIGHT, Board};
+use super::board::{Board, HEIGHT, NUM_FIELDS, WIDTH};
 
 const NUM_VALUES_PER_FIELD: usize = 9;
 
 mod solver_board;
-use solver_board::{PossibleValues, SolverBoard};
+use solver_board::PossibleValues;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
@@ -52,11 +52,11 @@ fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, S
                         } else {
                             // Undo changes to board before returning
                             board.field_mut(x, y).set(None);
-                            
+
                             // We just found a second solution
                             return Err(SolverError::Ambigious);
                         }
-                    },
+                    }
                     Err(SolverError::Ambigious) => {
                         // Undo changes to the board before returning
                         board.field_mut(x, y).set(None);
@@ -86,7 +86,8 @@ mod tests {
 
     #[test]
     fn solvable_difficult() {
-        let board = Board::from_str("
+        let board = Board::from_str(
+            "
             __4 68_ _19
             __3 __9 2_5
             _6_ ___ __4
@@ -98,8 +99,10 @@ mod tests {
             8__ _5_ __7
             _41 3_8 ___
             _2_ _91 ___
-        ");
-        let expected_solution = Board::from_str("
+        ",
+        );
+        let expected_solution = Board::from_str(
+            "
             274 685 319
             183 749 265
             965 123 874
@@ -111,7 +114,8 @@ mod tests {
             839 256 147
             541 378 926
             726 491 538
-        ");
+        ",
+        );
         let actual_solution = solve(board).unwrap();
         assert!(actual_solution.is_filled());
         assert!(!actual_solution.has_conflicts());
@@ -120,7 +124,8 @@ mod tests {
 
     #[test]
     fn not_solvable_difficult() {
-        let board = Board::from_str("
+        let board = Board::from_str(
+            "
             __4 68_ _19
             __3 __9 2_5
             _6_ ___ __4
@@ -132,14 +137,16 @@ mod tests {
             8__ _5_ __7
             _41 3_8 ___
             _2_ _91 ___
-        ");
+        ",
+        );
         let actual_solution = solve(board);
         assert_eq!(Err(SolverError::NotSolvable), actual_solution);
     }
 
     #[test]
     fn ambigious() {
-        let board = Board::from_str("
+        let board = Board::from_str(
+            "
             __4 6__ _19
             __3 __9 2_5
             _6_ ___ __4
@@ -151,7 +158,8 @@ mod tests {
             8__ _5_ __7
             _41 3_8 ___
             _2_ _91 ___
-        ");
+        ",
+        );
         let actual_solution = solve(board);
         assert_eq!(Err(SolverError::Ambigious), actual_solution);
     }

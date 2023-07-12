@@ -1,6 +1,6 @@
 use crate::utils::div_ceil;
-use std::num::NonZeroU8;
 use std::fmt::{self, Debug};
+use std::num::NonZeroU8;
 
 pub const WIDTH: usize = 9;
 pub const HEIGHT: usize = 9;
@@ -131,9 +131,7 @@ impl Board {
     }
 
     // TODO Test
-    pub fn first_empty_field_index(
-        &self,
-    ) -> Option<(usize, usize)> {
+    pub fn first_empty_field_index(&self) -> Option<(usize, usize)> {
         // TODO Do this with iterators
         // TODO Better would be to iterate over `self.compressed_board` and `FieldRef::subindex`
         for x in 0..WIDTH {
@@ -152,20 +150,22 @@ impl Board {
     }
 
     // TODO Test
-    pub fn row_iter(&self, row: usize) -> impl Iterator<Item=FieldRef<&'_ u8>> {
+    pub fn row_iter(&self, row: usize) -> impl Iterator<Item = FieldRef<&'_ u8>> {
         (0..WIDTH).map(move |x| self.field(x, row))
     }
 
     // TODO Test
-    pub fn col_iter(&self, col: usize) -> impl Iterator<Item=FieldRef<&'_ u8>> {
+    pub fn col_iter(&self, col: usize) -> impl Iterator<Item = FieldRef<&'_ u8>> {
         (0..HEIGHT).map(move |y| self.field(col, y))
     }
 
     // TODO Test
-    pub fn cell_iter(&self, cell_x: usize, cell_y: usize) -> impl Iterator<Item=FieldRef<&'_ u8>> {
-        (0..3).flat_map(move |x| {
-            (0..3).map(move |y| self.field(cell_x * 3 + x, cell_y * 3 + y))
-        })
+    pub fn cell_iter(
+        &self,
+        cell_x: usize,
+        cell_y: usize,
+    ) -> impl Iterator<Item = FieldRef<&'_ u8>> {
+        (0..3).flat_map(move |x| (0..3).map(move |y| self.field(cell_x * 3 + x, cell_y * 3 + y)))
     }
 
     // TODO Test
@@ -190,7 +190,10 @@ impl Board {
         return false;
     }
 
-    fn has_conflicts_in_fields<'a>(&'a self, fields: impl Iterator<Item=FieldRef<&'a u8>>) -> bool {
+    fn has_conflicts_in_fields<'a>(
+        &'a self,
+        fields: impl Iterator<Item = FieldRef<&'a u8>>,
+    ) -> bool {
         let mut seen = [false; 9];
         for field in fields {
             if let Some(value) = field.get() {
@@ -217,7 +220,14 @@ impl Debug for Board {
                     // Add a separate between every 3 cols
                     write!(f, " ")?;
                 }
-                write!(f, "{}", self.field(x, y).get().map(|c| c.to_string()).unwrap_or_else(|| "_".to_string()))?;
+                write!(
+                    f,
+                    "{}",
+                    self.field(x, y)
+                        .get()
+                        .map(|c| c.to_string())
+                        .unwrap_or_else(|| "_".to_string())
+                )?;
             }
             write!(f, "\n")?;
         }
@@ -254,7 +264,9 @@ mod tests {
         let mut board = Board::new_empty();
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
-                board.field_mut(x, y).set(NonZeroU8::new(rng.gen_range(0..=9)));
+                board
+                    .field_mut(x, y)
+                    .set(NonZeroU8::new(rng.gen_range(0..=9)));
             }
         }
 
@@ -280,7 +292,8 @@ mod tests {
 
     #[test]
     fn from_str() {
-        let board = Board::from_str("
+        let board = Board::from_str(
+            "
             124 367 598
             598 241 36_
             376 895 412
@@ -292,7 +305,8 @@ mod tests {
             483 179 625
             217 536 98_
             ___ 482 731
-        ");
+        ",
+        );
 
         assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(0, 0).get());
         assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(1, 0).get());
@@ -314,76 +328,74 @@ mod tests {
         assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(7, 1).get());
         assert_eq!(None, board.field(8, 1).get());
 
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(0,2).get());
-        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(1,2).get());
-        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(2,2).get());
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(3,2).get());
-        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(4,2).get());
-        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(5,2).get());
-        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(6,2).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(7,2).get());
-        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(8,2).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(0, 2).get());
+        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(1, 2).get());
+        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(2, 2).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(3, 2).get());
+        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(4, 2).get());
+        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(5, 2).get());
+        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(6, 2).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(7, 2).get());
+        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(8, 2).get());
 
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(0,3).get());
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(1,3).get());
-        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(2,3).get());
-        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(3,3).get());
-        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(4,3).get());
-        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(5,3).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(6,3).get());
-        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(7,3).get());
-        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(8,3).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(0, 3).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(1, 3).get());
+        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(2, 3).get());
+        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(3, 3).get());
+        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(4, 3).get());
+        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(5, 3).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(6, 3).get());
+        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(7, 3).get());
+        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(8, 3).get());
 
-        assert_eq!(None, board.field(0,4).get());
-        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(1,4).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(2,4).get());
-        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(3,4).get());
-        assert_eq!(None, board.field(4,4).get());
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(5,4).get());
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(6,4).get());
-        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(7,4).get());
-        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(8,4).get());
+        assert_eq!(None, board.field(0, 4).get());
+        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(1, 4).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(2, 4).get());
+        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(3, 4).get());
+        assert_eq!(None, board.field(4, 4).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(5, 4).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(6, 4).get());
+        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(7, 4).get());
+        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(8, 4).get());
 
-        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(0,5).get());
-        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(1,5).get());
-        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(2,5).get());
-        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(3,5).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(4,5).get());
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(5,5).get());
-        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(6,5).get());
-        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(7,5).get());
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(8,5).get());
+        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(0, 5).get());
+        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(1, 5).get());
+        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(2, 5).get());
+        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(3, 5).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(4, 5).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(5, 5).get());
+        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(6, 5).get());
+        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(7, 5).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(8, 5).get());
 
+        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(0, 6).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(1, 6).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(2, 6).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(3, 6).get());
+        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(4, 6).get());
+        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(5, 6).get());
+        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(6, 6).get());
+        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(7, 6).get());
+        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(8, 6).get());
 
-        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(0,6).get());
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(1,6).get());
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(2,6).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(3,6).get());
-        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(4,6).get());
-        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(5,6).get());
-        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(6,6).get());
-        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(7,6).get());
-        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(8,6).get());
+        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(0, 7).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(1, 7).get());
+        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(2, 7).get());
+        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(3, 7).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(4, 7).get());
+        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(5, 7).get());
+        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(6, 7).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(7, 7).get());
+        assert_eq!(None, board.field(8, 7).get());
 
-        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(0,7).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(1,7).get());
-        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(2,7).get());
-        assert_eq!(Some(NonZeroU8::new(5).unwrap()), board.field(3,7).get());
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(4,7).get());
-        assert_eq!(Some(NonZeroU8::new(6).unwrap()), board.field(5,7).get());
-        assert_eq!(Some(NonZeroU8::new(9).unwrap()), board.field(6,7).get());
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(7,7).get());
-        assert_eq!(None, board.field(8,7).get());
-
-        assert_eq!(None, board.field(0,8).get());
-        assert_eq!(None, board.field(1,8).get());
-        assert_eq!(None, board.field(2,8).get());
-        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(3,8).get());
-        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(4,8).get());
-        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(5,8).get());
-        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(6,8).get());
-        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(7,8).get());
-        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(8,8).get());
-
+        assert_eq!(None, board.field(0, 8).get());
+        assert_eq!(None, board.field(1, 8).get());
+        assert_eq!(None, board.field(2, 8).get());
+        assert_eq!(Some(NonZeroU8::new(4).unwrap()), board.field(3, 8).get());
+        assert_eq!(Some(NonZeroU8::new(8).unwrap()), board.field(4, 8).get());
+        assert_eq!(Some(NonZeroU8::new(2).unwrap()), board.field(5, 8).get());
+        assert_eq!(Some(NonZeroU8::new(7).unwrap()), board.field(6, 8).get());
+        assert_eq!(Some(NonZeroU8::new(3).unwrap()), board.field(7, 8).get());
+        assert_eq!(Some(NonZeroU8::new(1).unwrap()), board.field(8, 8).get());
     }
 }
