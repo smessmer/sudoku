@@ -22,7 +22,10 @@ pub fn solve(board: Board) -> Result<Board, SolverError> {
     match solver.next_solution() {
         None => Err(SolverError::NotSolvable),
         Some(solution) => {
-            if solver.next_solution().is_some() {
+            assert!(board.is_subset_of(&solution));
+            if let Some(solution2) = solver.next_solution() {
+                assert!(board.is_subset_of(&solution2));
+                assert_ne!(solution, solution2);
                 Err(SolverError::Ambigious)
             } else {
                 assert!(solution.is_filled());

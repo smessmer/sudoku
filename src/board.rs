@@ -207,6 +207,20 @@ impl Board {
         }
         false
     }
+
+    // TODO Test
+    pub fn is_subset_of(&self, rhs: &Board) -> bool {
+        for x in 0..WIDTH {
+            for y in 0..HEIGHT {
+                if let Some(lhs_value) = self.field(x,y).get() {
+                    if Some(lhs_value) != rhs.field(x,y).get() {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
 }
 
 impl Debug for Board {

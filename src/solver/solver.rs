@@ -27,10 +27,11 @@ impl Solver {
     fn push(&mut self, board: Board, possible_values: PossibleValues) {
         match solve_simple_strategies(board, possible_values) {
             SimpleSolverResult::FoundSomething {
-                board,
-                possible_values,
+                board: new_board,
+                possible_values: new_possible_values,
             } => {
-                self.board_stack.push((board, possible_values));
+                debug_assert!(board.is_subset_of(&new_board));
+                self.board_stack.push((new_board, new_possible_values));
             }
             SimpleSolverResult::FoundNothing => {
                 self.board_stack.push((board, possible_values));
@@ -46,9 +47,8 @@ impl Solver {
             // No more solutions left
             return None;
         };
-        // TODO No clone
-        let board = board.clone();
-        let possible_values = possible_values.clone();
+        let board = *board;
+        let possible_values = *possible_values;
         match board.first_empty_field_index() {
             None => {
                 // No empty fields left. The sudoku is fully solved.
@@ -83,4 +83,44 @@ impl Solver {
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ambigious() {
+        let board = Board::from_str(
+            "
+            __4 6__ _19
+            __3 __9 2_5
+            _6_ ___ __4
+
+            6__ ___ 7_2
+            ___ __7 ___
+            ___ 9__ __1
+
+            8__ _5_ __7
+            _41 3_8 ___
+            _2_ _91 ___
+        ",
+        );
+        let mut solver = Solver::new(board);
+        let mut solutions = vec![];
+        while let Some(solution) = solver.next_solution() {
+            assert!(solution.is_filled());
+            assert!(!solution.has_conflicts());
+            assert!(board.is_subset_of(&solution));
+
+            for other_solution in &solutions {
+                assert_ne!(*other_solution, solution);
+            }
+
+            solutions.push(solution);
+        }
+        assert_eq!(10, solutions.len());
+    }
+
+    // TODO More tests
 }
