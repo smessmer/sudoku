@@ -15,9 +15,15 @@ pub enum SolverError {
 
     #[error("Sudoku has multiple valid solutions")]
     Ambigious,
+
+    #[error("Sudoku has conflicting entries")]
+    Conflicting,
 }
 
 pub fn solve(board: Board) -> Result<Board, SolverError> {
+    if board.has_conflicts() {
+        return Err(SolverError::Conflicting);
+    }
     let mut solver = Solver::new(board);
     match solver.next_solution() {
         None => Err(SolverError::NotSolvable),
@@ -122,6 +128,27 @@ mod tests {
         );
         let actual_solution = solve(board);
         assert_eq!(Err(SolverError::Ambigious), actual_solution);
+    }
+
+    #[test]
+    fn conflict() {
+        let board = Board::from_str(
+            "
+            __4 68_ _19
+            __3 __9 2_5
+            _6_ ___ __4
+
+            67_ ___ 7_2
+            ___ __7 ___
+            ___ 9__ __1
+
+            8__ _5_ __7
+            _41 3_8 ___
+            _2_ _91 ___
+        ",
+        );
+        let actual_solution = solve(board);
+        assert_eq!(Err(SolverError::Conflicting), actual_solution);
     }
 
     #[test]
