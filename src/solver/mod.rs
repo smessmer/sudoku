@@ -26,8 +26,6 @@ pub fn solve(mut board: Board) -> Result<Board, SolverError> {
 // Invariant:
 //  - When `_solve` returns, `board` is unchanged. Any changes made to `board` during execution need to have been undone.
 fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, SolverError> {
-    // TODO First try faster mechanisms from C++ solver_easy
-
     if let Some((mut board, possible_values)) = _solve_simple_strategies(*board, possible_values)? {
         // Note: calling _solve here means that in it, we re-run _solve_simple_strategies again. It's possible that it'll find more things based on the changed board.
         return _solve(&mut board, possible_values);
