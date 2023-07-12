@@ -28,8 +28,8 @@ pub fn solve(mut board: Board) -> Result<Board, SolverError> {
 fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, SolverError> {
     // TODO First try faster mechanisms from C++ solver_easy
 
-    if let Some((mut board, possible_values)) = _solve_simple_strategy(*board, possible_values)? {
-        // Note: calling _solve here means that in it, we re-run _solve_simple_strategy again. It's possible that it'll find more things based on the changed board.
+    if let Some((mut board, possible_values)) = _solve_simple_strategies(*board, possible_values)? {
+        // Note: calling _solve here means that in it, we re-run _solve_simple_strategies again. It's possible that it'll find more things based on the changed board.
         return _solve(&mut board, possible_values);
     }
 
@@ -83,18 +83,31 @@ fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, S
     }
 }
 
-/// [_solve_simple_strategy] tries some fast strategies to add values on the board that can easily be deduced from other values.
+/// [_solve_hidden_candidates] tries a fast strategies to add values on the board that can easily be deduced from other values.
 /// It returns
 /// - `Ok(Some((board, possible_values)))` if it found something and the board was changed
 /// - `Ok(None)` if it found nothing (this doesn't mean that the board is unsolvable, just that the fast strategy failed)
 /// - `Err(SolverError)` if the board is unsolvable
-fn _solve_simple_strategy(mut board: Board, mut possible_values: PossibleValues) -> Result<Option<(Board, PossibleValues)>, SolverError> {
+fn _solve_simple_strategies(mut board: Board, mut possible_values: PossibleValues) -> Result<Option<(Board, PossibleValues)>, SolverError> {
+    if solve_hidden_candidates(&mut board, &mut possible_values)? {
+        Ok(Some((board, possible_values)))
+    } else {
+        Ok(None)
+    }
+}
+
+/// [_solve_hidden_candidates] tries a fast strategies to add values on the board that can easily be deduced from other values.
+/// It returns
+/// - `Ok(true)` if it found something and the board was changed
+/// - `Ok(false)` if it found nothing (this doesn't mean that the board is unsolvable, just that the strategy failed)
+/// - `Err(SolverError)` if the board is unsolvable
+fn solve_hidden_candidates(board: &mut Board, possible_values: &mut PossibleValues) -> Result<bool, SolverError> {
     let mut found_something = false;
 
     // Check each row for values that can only be placed in one field
     for row in 0u8..HEIGHT as u8 {
         let cells = (0u8..WIDTH as u8).map(|x| (x, row));
-        if _solve_simple_strategy_fields(&mut board, &mut possible_values, cells)? {
+        if _solve_hidden_candidates(board, possible_values, cells)? {
             found_something = true;
         }
     }
@@ -102,7 +115,7 @@ fn _solve_simple_strategy(mut board: Board, mut possible_values: PossibleValues)
     // Check each col for values that can only be placed in one field
     for col in 0u8..WIDTH as u8 {
         let cells = (0u8..HEIGHT as u8).map(|y| (col, y));
-        if _solve_simple_strategy_fields(&mut board, &mut possible_values, cells)? {
+        if _solve_hidden_candidates(board, possible_values, cells)? {
             found_something = true;
         }
     }
@@ -111,21 +124,17 @@ fn _solve_simple_strategy(mut board: Board, mut possible_values: PossibleValues)
     for cell_x in 0u8..3u8 {
         for cell_y in 0u8..3u8 {
             let cells = (0u8..3u8).flat_map(move |x| (0u8..3u8).map(move |y| (cell_x * 3 + x, cell_y * 3 + y)));
-            if _solve_simple_strategy_fields(&mut board, &mut possible_values, cells)? {
+            if _solve_hidden_candidates(board, possible_values, cells)? {
                 found_something = true;
             }
         }
     }
 
-    if found_something {
-        Ok(Some((board, possible_values)))
-    } else {
-        Ok(None)
-    }
+    Ok(found_something)
 }
 
 #[must_use]
-fn _solve_simple_strategy_fields(board: &mut Board, possible_values: &mut PossibleValues, field_coords: impl Iterator<Item = (u8, u8)> + Clone) -> Result<bool, SolverError> {
+fn _solve_hidden_candidates(board: &mut Board, possible_values: &mut PossibleValues, field_coords: impl Iterator<Item = (u8, u8)> + Clone) -> Result<bool, SolverError> {
     let mut found_something = false;
 
     'outer: for value in 1u8..=MAX_VALUE {
