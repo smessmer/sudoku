@@ -37,8 +37,7 @@ pub fn solve(board: Board) -> Result<Board, SolverError> {
 }
 
 pub fn generate() -> Board {
-    let mut generator = Generator::new(Board::new_empty());
-    generator.next_solution().unwrap()
+    Generator::new().generate()
 }
 
 #[cfg(test)]
