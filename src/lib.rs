@@ -5,4 +5,4 @@ mod generator;
 
 pub use board::Board;
 pub use solver::{generate_solved, solve};
-pub use generator::generate;
+pub use generator::{generate, generate_max_empty};
