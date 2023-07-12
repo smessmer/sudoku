@@ -145,6 +145,64 @@ impl Board {
         }
         None
     }
+
+    // TODO Test
+    pub fn is_filled(&self) -> bool {
+        self.first_empty_field_index().is_none()
+    }
+
+    // TODO Test
+    pub fn row_iter(&self, row: usize) -> impl Iterator<Item=FieldRef<&'_ u8>> {
+        (0..WIDTH).map(move |x| self.field(x, row))
+    }
+
+    // TODO Test
+    pub fn col_iter(&self, col: usize) -> impl Iterator<Item=FieldRef<&'_ u8>> {
+        (0..HEIGHT).map(move |y| self.field(col, y))
+    }
+
+    // TODO Test
+    pub fn cell_iter(&self, cell_x: usize, cell_y: usize) -> impl Iterator<Item=FieldRef<&'_ u8>> {
+        (0..3).flat_map(move |x| {
+            (0..3).map(move |y| self.field(cell_x * 3 + x, cell_y * 3 + y))
+        })
+    }
+
+    // TODO Test
+    pub fn has_conflicts(&self) -> bool {
+        for row in 0..HEIGHT {
+            if self.has_conflicts_in_fields(self.row_iter(row)) {
+                return true;
+            }
+        }
+        for col in 0..WIDTH {
+            if self.has_conflicts_in_fields(self.col_iter(col)) {
+                return true;
+            }
+        }
+        for cell_x in 0..3 {
+            for cell_y in 0..3 {
+                if self.has_conflicts_in_fields(self.cell_iter(cell_x, cell_y)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    fn has_conflicts_in_fields<'a>(&'a self, fields: impl Iterator<Item=FieldRef<&'a u8>>) -> bool {
+        let mut seen = [false; 9];
+        for field in fields {
+            if let Some(value) = field.get() {
+                let value = value.get() as usize - 1;
+                if seen[value] {
+                    return true;
+                }
+                seen[value] = true;
+            }
+        }
+        false
+    }
 }
 
 impl Debug for Board {

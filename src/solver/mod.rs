@@ -6,7 +6,7 @@ use super::board::{NUM_FIELDS, WIDTH, HEIGHT, Board};
 const NUM_VALUES_PER_FIELD: usize = 9;
 
 mod solver_board;
-use solver_board::SolverBoard;
+use solver_board::{PossibleValues, SolverBoard};
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
@@ -17,26 +17,33 @@ pub enum SolverError {
     Ambigious,
 }
 
-pub fn solve(board: Board) -> Result<Board, SolverError> {
-    let board = SolverBoard::new(board);
-    _solve(board)
+pub fn solve(mut board: Board) -> Result<Board, SolverError> {
+    // let board = SolverBoard::new(board);
+    let possible_values = PossibleValues::from_board(&board);
+    let solution = _solve(&mut board, possible_values)?;
+    assert!(solution.is_filled());
+    assert!(!solution.has_conflicts());
+    Ok(solution)
 }
 
-fn _solve(board: SolverBoard) -> Result<Board, SolverError> {
+fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, SolverError> {
     // TODO First try faster mechanisms from C++ solver_easy
 
-    match board.board().first_empty_field_index() {
+    match board.first_empty_field_index() {
         None => {
             // No empty fields left. The sudoku is fully solved
             // TODO Assert the sudoku is valid
-            Ok(*board.board())
+            Ok(*board)
         }
         Some((x, y)) => {
             let mut solution = None;
-            for value in board.possible_values().possible_values_for_field(x, y) {
-                let mut try_board = board;
-                try_board.set(x, y, value);
-                match _solve(try_board) {
+            for value in possible_values.possible_values_for_field(x, y) {
+                let mut field = board.field_mut(x, y);
+                assert!(field.is_empty());
+                field.set(Some(value));
+                let mut new_possible_values = possible_values;
+                new_possible_values.remove_conflicting(x, y, value);
+                match _solve(board, new_possible_values) {
                     Ok(new_solution) => {
                         if solution.is_none() {
                             // We found a solution. Remember it but keep checking for others
@@ -53,6 +60,7 @@ fn _solve(board: SolverBoard) -> Result<Board, SolverError> {
                         // This attempt didn't work out. Continue the loop and try other values.
                     }
                 }
+                board.field_mut(x, y).set(None);
             }
             match solution {
                 Some(solution) => Ok(solution),

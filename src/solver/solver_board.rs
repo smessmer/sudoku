@@ -18,6 +18,19 @@ impl PossibleValues {
         }
     }
 
+    pub fn from_board(board: &Board) -> PossibleValues {
+        let mut possible_values = PossibleValues::new_all_is_possible();
+        for x in 0..WIDTH {
+            for y in 0..HEIGHT {
+                let field = board.field(x, y);
+                if let Some(value) = field.get() {
+                    possible_values.remove_conflicting(x, y, value);
+                }
+            }
+        }
+        possible_values
+    }
+
     fn field_start_index(x: usize, y: usize) -> usize {
         assert!(x <= WIDTH && y <= HEIGHT);
         NUM_VALUES_PER_FIELD * (x * HEIGHT + y)
@@ -79,7 +92,7 @@ pub struct SolverBoard {
 
 impl SolverBoard {
     pub fn new(board: Board) -> Self {
-        let possible_values = possible_values_from_board(&board);
+        let possible_values = PossibleValues::from_board(&board);
         Self {
             board,
             possible_values,
@@ -103,15 +116,3 @@ impl SolverBoard {
     }
 }
 
-fn possible_values_from_board(board: &Board) -> PossibleValues {
-    let mut possible_values = PossibleValues::new_all_is_possible();
-    for x in 0..WIDTH {
-        for y in 0..HEIGHT {
-            let field = board.field(x, y);
-            if let Some(value) = field.get() {
-                possible_values.remove_conflicting(x, y, value);
-            }
-        }
-    }
-    possible_values
-}
