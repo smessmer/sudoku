@@ -53,6 +53,12 @@ impl PossibleValues {
             .map(|i| NonZeroU8::new(i).unwrap())
     }
 
+    // TODO Test
+    pub fn is_possible(&self, x: usize, y: usize, value: NonZeroU8) -> bool {
+        let index = Self::index(x, y, value);
+        self.values[index]
+    }
+
     fn remove_if_set(&mut self, x: usize, y: usize, value: NonZeroU8) {
         let index = Self::index(x, y, value);
         self.values.set(index, false);

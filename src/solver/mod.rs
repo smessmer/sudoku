@@ -1,7 +1,7 @@
 use thiserror::Error;
 use std::num::NonZeroU8;
 
-use super::board::{WIDTH, FieldRef, HEIGHT, MAX_VALUE, Board};
+use super::board::{WIDTH, HEIGHT, MAX_VALUE, Board};
 
 mod possible_values;
 use possible_values::PossibleValues;
@@ -28,8 +28,8 @@ pub fn solve(mut board: Board) -> Result<Board, SolverError> {
 fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, SolverError> {
     // TODO First try faster mechanisms from C++ solver_easy
 
-    if let Some((mut board, possible_values)) = _solve_fast(*board, possible_values)? {
-        // Note: calling _solve here means that in it, we re-run _solve_fast again. It's possible that it'll find more things based on the changed board.
+    if let Some((mut board, possible_values)) = _solve_simple_strategy(*board, possible_values)? {
+        // Note: calling _solve here means that in it, we re-run _solve_simple_strategy again. It's possible that it'll find more things based on the changed board.
         return _solve(&mut board, possible_values);
     }
 
@@ -83,18 +83,18 @@ fn _solve(board: &mut Board, possible_values: PossibleValues) -> Result<Board, S
     }
 }
 
-/// [_solve_fast] tries some fast strategies to add values on the board that can easily be deduced from other values.
+/// [_solve_simple_strategy] tries some fast strategies to add values on the board that can easily be deduced from other values.
 /// It returns
 /// - `Ok(Some((board, possible_values)))` if it found something and the board was changed
 /// - `Ok(None)` if it found nothing (this doesn't mean that the board is unsolvable, just that the fast strategy failed)
 /// - `Err(SolverError)` if the board is unsolvable
-fn _solve_fast(mut board: Board, mut possible_values: PossibleValues) -> Result<Option<(Board, PossibleValues)>, SolverError> {
+fn _solve_simple_strategy(mut board: Board, mut possible_values: PossibleValues) -> Result<Option<(Board, PossibleValues)>, SolverError> {
     let mut found_something = false;
 
     // Check each row for values that can only be placed in one field
     for row in 0u8..HEIGHT as u8 {
         let cells = (0u8..WIDTH as u8).map(|x| (x, row));
-        if _solve_fast_fields(&mut board, &mut possible_values, cells)? {
+        if _solve_simple_strategy_fields(&mut board, &mut possible_values, cells)? {
             found_something = true;
         }
     }
@@ -102,7 +102,7 @@ fn _solve_fast(mut board: Board, mut possible_values: PossibleValues) -> Result<
     // Check each col for values that can only be placed in one field
     for col in 0u8..WIDTH as u8 {
         let cells = (0u8..HEIGHT as u8).map(|y| (col, y));
-        if _solve_fast_fields(&mut board, &mut possible_values, cells)? {
+        if _solve_simple_strategy_fields(&mut board, &mut possible_values, cells)? {
             found_something = true;
         }
     }
@@ -111,7 +111,7 @@ fn _solve_fast(mut board: Board, mut possible_values: PossibleValues) -> Result<
     for cell_x in 0u8..3u8 {
         for cell_y in 0u8..3u8 {
             let cells = (0u8..3u8).flat_map(move |x| (0u8..3u8).map(move |y| (cell_x * 3 + x, cell_y * 3 + y)));
-            if _solve_fast_fields(&mut board, &mut possible_values, cells)? {
+            if _solve_simple_strategy_fields(&mut board, &mut possible_values, cells)? {
                 found_something = true;
             }
         }
@@ -125,70 +125,41 @@ fn _solve_fast(mut board: Board, mut possible_values: PossibleValues) -> Result<
 }
 
 #[must_use]
-fn _solve_fast_fields(board: &mut Board, possible_values: &mut PossibleValues, field_coords: impl Iterator<Item = (u8, u8)>) -> Result<bool, SolverError> {
-    // Algorithm: Go through one row (or col or cell, based on `field_coords`) and check for each value, if it has only one possible position in this row.
+fn _solve_simple_strategy_fields(board: &mut Board, possible_values: &mut PossibleValues, field_coords: impl Iterator<Item = (u8, u8)> + Clone) -> Result<bool, SolverError> {
+    let mut found_something = false;
 
-    #[derive(Clone, Copy, Debug)]
-    enum ValueInfo {
-        NoPossiblePlacementFound,
-        AlreadyPlaced,
-        CanOnlyBePlacedAtIndex((u8, u8)),
-        MultiplePossiblePlacementsFound,
-    }
-    // value_infos stores for each value, which row index it can be placed in.
-    let mut value_infos = [ValueInfo::NoPossiblePlacementFound; MAX_VALUE as usize];
-
-
-    // First, loop over all fields in the row and check which values are already placed and which values can be placed in which fields.
-    for (x, y) in field_coords {
-        let field = board.field(x as usize, y as usize);
-        if let Some(value) = field.get() {
-            // This field is already filled. Remember that the value is taken.
-            let entry = &mut value_infos[value.get() as usize - 1];
-            match *entry {
-                ValueInfo::NoPossiblePlacementFound => 
-                    *entry = ValueInfo::AlreadyPlaced,
-                ValueInfo::AlreadyPlaced | ValueInfo::CanOnlyBePlacedAtIndex(_) | ValueInfo::MultiplePossiblePlacementsFound => panic!("Something's wrong with our PossibleValues. They shouldn't list any values that are already placed. Board: {board:?}, cell: {x}/{y}, value: {value}, info: {entry:?}"),
-            }
-        } else {
-            // This field isn't filled yet. Remember which values could be placed here.
-            for value in possible_values.possible_values_for_field(x as usize, y as usize) {
-                match value_infos[value.get() as usize - 1] {
-                    ValueInfo::NoPossiblePlacementFound => {
-                        value_infos[value.get() as usize - 1] = ValueInfo::CanOnlyBePlacedAtIndex((x, y));
+    'outer: for value in 1u8..=MAX_VALUE {
+        let value = NonZeroU8::new(value).unwrap();
+        let mut placement = None;
+        for (x, y) in field_coords.clone() {
+            if let Some(current_value) = board.field(x as usize, y as usize).get() {
+                if current_value == value {
+                    // We found a field that already has the current value, no need to check other fields for it
+                    continue 'outer;
+                }
+            } else {
+                if possible_values.is_possible(x as usize, y as usize, value) {
+                    if placement.is_none() {
+                        placement = Some((x, y));
+                    } else {
+                        // We found a second field where the value can be placed. No need to check other fields for it
+                        continue 'outer;
                     }
-                    ValueInfo::AlreadyPlaced => panic!("Something's wrong with our PossibleValues. They shouldn't list any values that are already placed"),
-                    ValueInfo::CanOnlyBePlacedAtIndex(_) => {
-                        value_infos[value.get() as usize - 1] = ValueInfo::MultiplePossiblePlacementsFound;
-                    }
-                    ValueInfo::MultiplePossiblePlacementsFound => {}
                 }
             }
         }
-    }
 
-    // Second, check for each value whether it can be placed in only one field.
-    let mut found_something = false;
-    for value in 1u8..MAX_VALUE {
-        let value = NonZeroU8::new(value as u8).unwrap();
-        match value_infos[value.get() as usize - 1] {
-            ValueInfo::NoPossiblePlacementFound => {
-                return Err(SolverError::NotSolvable);
-            }
-            ValueInfo::CanOnlyBePlacedAtIndex((x, y)) => {
-                let x = x as usize;
-                let y = y as usize;
-                let mut field = board.field_mut(x, y);
-                if !field.is_empty() {
-                    // We just filled this field in a previous iteration. This means there are two values that need to go here, this is impossible
-                    return Err(SolverError::NotSolvable)
-                }
-                field.set(Some(value));
-                possible_values.remove_conflicting(x, y, value);
-                debug_assert!(!board.has_conflicts());
-                found_something = true;
-            }
-            ValueInfo::AlreadyPlaced | ValueInfo::MultiplePossiblePlacementsFound => {}
+        if let Some((x, y)) = placement {
+            // We found exactly one place where we can put this value
+            let x = x as usize;
+            let y = y as usize;
+            board.field_mut(x, y).set(Some(value));
+            possible_values.remove_conflicting(x, y, value);
+            found_something = true;
+            debug_assert!(!board.has_conflicts());
+        } else {
+            // We found no place where we can put this value
+            return Err(SolverError::NotSolvable);
         }
     }
 
