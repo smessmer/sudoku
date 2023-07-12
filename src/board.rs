@@ -84,7 +84,6 @@ impl Board {
         }
     }
 
-    #[cfg(test)]
     pub fn from_str(board: &str) -> Self {
         let mut chars = board.chars().filter(|x| !x.is_whitespace());
         let mut board = Board::new_empty();

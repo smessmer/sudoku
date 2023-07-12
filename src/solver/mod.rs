@@ -136,5 +136,12 @@ mod tests {
         assert_eq!(Err(SolverError::Ambigious), actual_solution);
     }
 
+    #[test]
+    fn empty() {
+        let board = Board::new_empty();
+        let actual_solution = solve(board);
+        assert_eq!(Err(SolverError::Ambigious), actual_solution);
+    }
+
     // TODO MOre tests
 }
