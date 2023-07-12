@@ -1,9 +1,6 @@
-use bitvec::prelude::*;
 use thiserror::Error;
 
-use super::board::{Board, HEIGHT, NUM_FIELDS, WIDTH};
-
-const NUM_VALUES_PER_FIELD: usize = 9;
+use super::board::Board;
 
 mod solver_board;
 use solver_board::PossibleValues;
@@ -18,7 +15,6 @@ pub enum SolverError {
 }
 
 pub fn solve(mut board: Board) -> Result<Board, SolverError> {
-    // let board = SolverBoard::new(board);
     let possible_values = PossibleValues::from_board(&board);
     let solution = _solve(&mut board, possible_values)?;
     assert!(solution.is_filled());

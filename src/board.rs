@@ -7,7 +7,6 @@ pub const HEIGHT: usize = 9;
 pub const NUM_FIELDS: usize = WIDTH * HEIGHT;
 
 const NUM_BYTES: usize = div_ceil(NUM_FIELDS, 2);
-const FIELD_EMPTY: u8 = 0;
 
 /// A [Board] is a 9x9 sudoku board.
 /// Each cell can contain a value in 0..=9 where 0 means the cell is empty.
