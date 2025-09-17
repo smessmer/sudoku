@@ -82,6 +82,8 @@ fn _solve_hidden_candidates(
     'outer: for value in 1u8..=MAX_VALUE {
         let value = NonZeroU8::new(value).unwrap();
         let mut placement = None;
+
+        // Find the place(s) where we can put this value
         for (x, y) in field_coords.clone() {
             if let Some(current_value) = board.field(x as usize, y as usize).get() {
                 if current_value == value {
@@ -91,6 +93,7 @@ fn _solve_hidden_candidates(
             } else {
                 if possible_values.is_possible(x as usize, y as usize, value) {
                     if placement.is_none() {
+                        // We found a first place where the value can be placed. Keep looking for more places.
                         placement = Some((x, y));
                     } else {
                         // We found a second field where the value can be placed. No need to check other fields for it
