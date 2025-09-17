@@ -3,7 +3,7 @@ use std::num::NonZeroU8;
 
 use super::{
     possible_values::PossibleValues,
-    strategies::{solve_simple_strategies, SimpleSolverResult},
+    strategies::{SimpleSolverResult, solve_simple_strategies},
 };
 use crate::board::Board;
 
@@ -128,41 +128,47 @@ impl<G: Guesser> SolverImpl<G> {
     }
 
     pub fn next_solution(&mut self) -> Option<Board> {
-        let Some((board, possible_values)) = self.board_stack.last() else {
-            // No more solutions left
-            return None;
-        };
-        let board = *board;
-        let possible_values = *possible_values;
-        match board.first_empty_field_index() {
-            None => {
-                // No empty fields left. The sudoku is fully solved.
-                self.board_stack.pop().unwrap();
-                return Some(board);
-            }
-            Some((x, y)) => {
-                match self.guesser.guess_value(&possible_values, x, y) {
-                    None => {
-                        // No possible values left for this field. This means that the board on top doesn't have any more solutions.
-                        // Remove it and continue guessing for boards below it.
-                        self.board_stack.pop().unwrap();
-                        return self.next_solution();
-                    }
-                    Some(value) => {
-                        // Remove this from the possible values of the *current* board so we don't try it again after backtracking to this stack entry
-                        self.board_stack.last_mut().unwrap().1.remove(x, y, value);
+        loop {
+            let Some((board, possible_values)) = self.board_stack.last() else {
+                // No more solutions left
+                return None;
+            };
+            let board = *board;
+            let possible_values = *possible_values;
+            match board.first_empty_field_index() {
+                None => {
+                    // No empty fields left. The sudoku is fully solved.
+                    self.board_stack.pop().unwrap();
+                    return Some(board);
+                }
+                Some((x, y)) => {
+                    match self.guesser.guess_value(&possible_values, x, y) {
+                        None => {
+                            // No possible values left for this field. This means that the board on top doesn't have any more solutions.
+                            // Remove it and continue guessing for boards below it.
+                            // TODO Maybe not just look at the next field, but check all fields of possible_values? As soon as any says that there are no possible values left, we can cut this branch.
+                            self.board_stack.pop().unwrap();
 
-                        // Make a guess for the value of this field
-                        let mut board = board;
-                        let mut field = board.field_mut(x, y);
-                        assert!(field.is_empty());
-                        field.set(Some(value));
-                        debug_assert!(!board.has_conflicts());
-                        let mut new_possible_values = possible_values;
-                        new_possible_values.remove_conflicting(x, y, value);
-                        self.push(board, new_possible_values);
+                            // Now that we removed the top board, continue the loop to try with the next board on the stack.
+                            continue;
+                        }
+                        Some(value) => {
+                            // Remove this from the possible values of the *current* board so we don't try it again after backtracking to this stack entry
+                            self.board_stack.last_mut().unwrap().1.remove(x, y, value);
 
-                        return self.next_solution();
+                            // Make a guess for the value of this field
+                            let mut board = board;
+                            let mut field = board.field_mut(x, y);
+                            assert!(field.is_empty());
+                            field.set(Some(value));
+                            debug_assert!(!board.has_conflicts());
+                            let mut new_possible_values = possible_values;
+                            new_possible_values.remove_conflicting(x, y, value);
+                            self.push(board, new_possible_values);
+
+                            // Now that we guessed a value, continue the loop with the next iteration to either return a solution or keep guessing if necessary.
+                            continue;
+                        }
                     }
                 }
             }
