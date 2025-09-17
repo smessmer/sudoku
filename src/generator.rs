@@ -12,6 +12,9 @@ pub fn generate() -> Board {
         .collect();
     all_fields.shuffle(&mut rand::rng());
     for (x, y) in all_fields {
+        // TODO To check if it's unambigious, we keep solving it. This is quite inefficient.
+        //      At least the branch for the value we've just removed was already explored before and proven to have exactly one solution.
+        //      Can we only check other branches and assert that it has zero solutions?
         remove_field_if_unambigious(&mut board, x as usize, y as usize);
     }
 
