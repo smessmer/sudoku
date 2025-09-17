@@ -28,6 +28,7 @@ pub fn solve_simple_strategies(
     }
 
     // TODO fill_known_values() (i.e. find fields that only have one possible value in PossibleValues and fill them). This also fixes the TODO in solver.rs to abort early when a field has no possible values left.
+    // TODO Try again? finding some fields may open up finding others.
 }
 
 /// [solve_hidden_candidates] tries to fill hidden candidates, i.e. values that only have one possible position in a row, column or 3x3 region.
