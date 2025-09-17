@@ -146,7 +146,6 @@ impl<G: Guesser> SolverImpl<G> {
                         None => {
                             // No possible values left for this field. This means that the board on top doesn't have any more solutions.
                             // Remove it and continue guessing for boards below it.
-                            // TODO Maybe not just look at the next field, but check all fields of possible_values? As soon as any says that there are no possible values left, we can cut this branch.
                             self.board_stack.pop().unwrap();
 
                             // Now that we removed the top board, continue the loop to try with the next board on the stack.

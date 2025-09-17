@@ -18,17 +18,71 @@ pub fn solve_simple_strategies(
     mut board: Board,
     mut possible_values: PossibleValues,
 ) -> SimpleSolverResult {
-    match solve_hidden_candidates(&mut board, &mut possible_values) {
-        Some(true) => SimpleSolverResult::FoundSomething {
-            board,
-            possible_values,
-        },
-        Some(false) => SimpleSolverResult::FoundNothing,
+    let mut found_something = false;
+
+    match solve_known_values(&mut board, &mut possible_values) {
+        Some(true) => {
+            found_something = true;
+        }
+        Some(false) => {
+            // didn't find anything
+        }
         None => return SimpleSolverResult::NotSolvable,
     }
 
-    // TODO fill_known_values() (i.e. find fields that only have one possible value in PossibleValues and fill them). This also fixes the TODO in solver.rs to abort early when a field has no possible values left.
-    // TODO Try again? finding some fields may open up finding others.
+    match solve_hidden_candidates(&mut board, &mut possible_values) {
+        Some(true) => {
+            found_something = true;
+        }
+        Some(false) => {
+            // didn't find anything
+        }
+        None => return SimpleSolverResult::NotSolvable,
+    }
+
+    if found_something {
+        SimpleSolverResult::FoundSomething {
+            board,
+            possible_values,
+        }
+    } else {
+        SimpleSolverResult::FoundNothing
+    }
+}
+
+/// [solve_known_values] tries to fill in fields that only have one possible value according to `possible_values`.
+/// It can also detect situations where a field has no possible values left, meaning that the board is unsolvable.
+/// It returns
+/// - `Some(true)` if it found something and the board was changed
+/// - `Some(false)` if it found nothing (this doesn't mean that the board is unsolvable, just that the strategy failed)
+/// - `None` if the board is unsolvable
+fn solve_known_values(board: &mut Board, possible_values: &mut PossibleValues) -> Option<bool> {
+    let mut found_something = false;
+
+    for x in 0..WIDTH {
+        for y in 0..HEIGHT {
+            let mut field = board.field_mut(x, y);
+            if field.is_empty() {
+                let mut possible_values_this_field =
+                    possible_values.possible_values_for_field(x, y);
+                let Some(first_possible_value) = possible_values_this_field.next() else {
+                    // No possible values left for this field. The board is not solvable.
+                    return None;
+                };
+                let second_possible_value = possible_values_this_field.next();
+                std::mem::drop(possible_values_this_field);
+                if second_possible_value.is_none() {
+                    // There is exactly one possible value for this field. Fill it in.
+                    field.set(Some(first_possible_value));
+                    possible_values.remove_conflicting(x, y, first_possible_value);
+                    debug_assert!(!board.has_conflicts());
+                    found_something = true;
+                }
+            }
+        }
+    }
+
+    Some(found_something)
 }
 
 /// [solve_hidden_candidates] tries to fill hidden candidates, i.e. values that only have one possible position in a row, column or 3x3 region.
