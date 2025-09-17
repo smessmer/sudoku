@@ -4,41 +4,32 @@ use super::possible_values::PossibleValues;
 use crate::board::{Board, HEIGHT, MAX_VALUE, WIDTH};
 
 pub enum SimpleSolverResult {
-    FoundSomething {
-        board: Board,
-        possible_values: PossibleValues,
-    },
+    FoundSomething,
     FoundNothing,
     NotSolvable,
 }
 
 /// [solve_simple_strategies] tries some fast strategies to add values on the board that can easily be deduced from other values.
+/// It modifies the board and possible_values in place and returns whether it found and inserted some values.
 pub fn solve_simple_strategies(
-    mut board: Board,
-    mut possible_values: PossibleValues,
+    board: &mut Board,
+    possible_values: &mut PossibleValues,
 ) -> SimpleSolverResult {
-    let mut found_something_previous_iteration = false;
+    let mut previous_iteration_result = SimpleSolverResult::FoundNothing;
+
     loop {
-        match _solve_simple_strategies(&mut board, &mut possible_values) {
-            SimpleSolverResultInternal::FoundSomething => {
-                found_something_previous_iteration = true;
+        match _solve_simple_strategies(board, possible_values) {
+            SimpleSolverResult::FoundSomething => {
+                previous_iteration_result = SimpleSolverResult::FoundSomething;
 
                 // TODO For some reason, our benchmarks say it would be faster to abort here and return FoundSomething instead of continuing to find more values.
             }
-            SimpleSolverResultInternal::FoundNothing => {
-                if found_something_previous_iteration {
-                    // We found something in a previous iteration, just didn't find anything after that.
-                    // But we can return what we found previously.
-                    return SimpleSolverResult::FoundSomething {
-                        board,
-                        possible_values,
-                    };
-                } else {
-                    // We didn't find anything and this is the first iteration. Return that we didn't find anything.
-                    return SimpleSolverResult::FoundNothing;
-                }
+            SimpleSolverResult::FoundNothing => {
+                // We may or may not have found something in a previous iteration, just didn't find anything in the current iteration.
+                // But we can return what we found previously.
+                return previous_iteration_result;
             }
-            SimpleSolverResultInternal::NotSolvable => {
+            SimpleSolverResult::NotSolvable => {
                 // This might be the first iteration or we may have found something in a previous iteration, but since we ended up in a not solvable dead end,
                 // anything we found previously doesn't matter. The whole Sudoku isn't solvable.
                 return SimpleSolverResult::NotSolvable;
@@ -47,36 +38,30 @@ pub fn solve_simple_strategies(
     }
 }
 
-enum SimpleSolverResultInternal {
-    FoundSomething,
-    FoundNothing,
-    NotSolvable,
-}
-
 fn _solve_simple_strategies(
     board: &mut Board,
     possible_values: &mut PossibleValues,
-) -> SimpleSolverResultInternal {
-    let mut result = SimpleSolverResultInternal::FoundNothing;
+) -> SimpleSolverResult {
+    let mut result = SimpleSolverResult::FoundNothing;
 
     match solve_known_values(board, possible_values) {
-        SimpleSolverResultInternal::FoundSomething => {
-            result = SimpleSolverResultInternal::FoundSomething;
+        SimpleSolverResult::FoundSomething => {
+            result = SimpleSolverResult::FoundSomething;
         }
-        SimpleSolverResultInternal::FoundNothing => {
+        SimpleSolverResult::FoundNothing => {
             // didn't find anything
         }
-        SimpleSolverResultInternal::NotSolvable => return SimpleSolverResultInternal::NotSolvable,
+        SimpleSolverResult::NotSolvable => return SimpleSolverResult::NotSolvable,
     }
 
     match solve_hidden_candidates(board, possible_values) {
-        SimpleSolverResultInternal::FoundSomething => {
-            result = SimpleSolverResultInternal::FoundSomething;
+        SimpleSolverResult::FoundSomething => {
+            result = SimpleSolverResult::FoundSomething;
         }
-        SimpleSolverResultInternal::FoundNothing => {
+        SimpleSolverResult::FoundNothing => {
             // didn't find anything
         }
-        SimpleSolverResultInternal::NotSolvable => return SimpleSolverResultInternal::NotSolvable,
+        SimpleSolverResult::NotSolvable => return SimpleSolverResult::NotSolvable,
     }
 
     result
@@ -87,9 +72,9 @@ fn _solve_simple_strategies(
 fn solve_known_values(
     board: &mut Board,
     possible_values: &mut PossibleValues,
-) -> SimpleSolverResultInternal {
+) -> SimpleSolverResult {
     // TODO Instead of using solve_known_values to run over all fields repeatedly, it would be more efficient to just check number of remaining values whenever we update PossibleValues. Then remove this simple solver strategy here.
-    let mut result = SimpleSolverResultInternal::FoundNothing;
+    let mut result = SimpleSolverResult::FoundNothing;
 
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
@@ -99,7 +84,7 @@ fn solve_known_values(
                     possible_values.possible_values_for_field(x, y);
                 let Some(first_possible_value) = possible_values_this_field.next() else {
                     // No possible values left for this field. The board is not solvable.
-                    return SimpleSolverResultInternal::NotSolvable;
+                    return SimpleSolverResult::NotSolvable;
                 };
                 let second_possible_value = possible_values_this_field.next();
                 std::mem::drop(possible_values_this_field);
@@ -108,7 +93,7 @@ fn solve_known_values(
                     field.set(Some(first_possible_value));
                     possible_values.remove_conflicting(x, y, first_possible_value);
                     debug_assert!(!board.has_conflicts());
-                    result = SimpleSolverResultInternal::FoundSomething;
+                    result = SimpleSolverResult::FoundSomething;
                 }
             }
         }
@@ -121,19 +106,19 @@ fn solve_known_values(
 fn solve_hidden_candidates(
     board: &mut Board,
     possible_values: &mut PossibleValues,
-) -> SimpleSolverResultInternal {
-    let mut result = SimpleSolverResultInternal::FoundNothing;
+) -> SimpleSolverResult {
+    let mut result = SimpleSolverResult::FoundNothing;
 
     // Check each row for values that can only be placed in one field
     for row in 0u8..HEIGHT as u8 {
         let cells = (0u8..WIDTH as u8).map(|x| (x, row));
         match _solve_hidden_candidates(board, possible_values, cells) {
-            SimpleSolverResultInternal::FoundSomething => {
-                result = SimpleSolverResultInternal::FoundSomething;
+            SimpleSolverResult::FoundSomething => {
+                result = SimpleSolverResult::FoundSomething;
             }
-            SimpleSolverResultInternal::FoundNothing => {}
-            SimpleSolverResultInternal::NotSolvable => {
-                return SimpleSolverResultInternal::NotSolvable;
+            SimpleSolverResult::FoundNothing => {}
+            SimpleSolverResult::NotSolvable => {
+                return SimpleSolverResult::NotSolvable;
             }
         }
     }
@@ -142,12 +127,12 @@ fn solve_hidden_candidates(
     for col in 0u8..WIDTH as u8 {
         let cells = (0u8..HEIGHT as u8).map(|y| (col, y));
         match _solve_hidden_candidates(board, possible_values, cells) {
-            SimpleSolverResultInternal::FoundSomething => {
-                result = SimpleSolverResultInternal::FoundSomething;
+            SimpleSolverResult::FoundSomething => {
+                result = SimpleSolverResult::FoundSomething;
             }
-            SimpleSolverResultInternal::FoundNothing => {}
-            SimpleSolverResultInternal::NotSolvable => {
-                return SimpleSolverResultInternal::NotSolvable;
+            SimpleSolverResult::FoundNothing => {}
+            SimpleSolverResult::NotSolvable => {
+                return SimpleSolverResult::NotSolvable;
             }
         }
     }
@@ -158,12 +143,12 @@ fn solve_hidden_candidates(
             let cells = (0u8..3u8)
                 .flat_map(move |x| (0u8..3u8).map(move |y| (region_x * 3 + x, region_y * 3 + y)));
             match _solve_hidden_candidates(board, possible_values, cells) {
-                SimpleSolverResultInternal::FoundSomething => {
-                    result = SimpleSolverResultInternal::FoundSomething;
+                SimpleSolverResult::FoundSomething => {
+                    result = SimpleSolverResult::FoundSomething;
                 }
-                SimpleSolverResultInternal::FoundNothing => {}
-                SimpleSolverResultInternal::NotSolvable => {
-                    return SimpleSolverResultInternal::NotSolvable;
+                SimpleSolverResult::FoundNothing => {}
+                SimpleSolverResult::NotSolvable => {
+                    return SimpleSolverResult::NotSolvable;
                 }
             }
         }
@@ -177,8 +162,8 @@ fn _solve_hidden_candidates(
     board: &mut Board,
     possible_values: &mut PossibleValues,
     field_coords: impl Iterator<Item = (u8, u8)> + Clone,
-) -> SimpleSolverResultInternal {
-    let mut result = SimpleSolverResultInternal::FoundNothing;
+) -> SimpleSolverResult {
+    let mut result = SimpleSolverResult::FoundNothing;
 
     'outer: for value in 1u8..=MAX_VALUE {
         let value = NonZeroU8::new(value).unwrap();
@@ -210,11 +195,11 @@ fn _solve_hidden_candidates(
             let y = y as usize;
             board.field_mut(x, y).set(Some(value));
             possible_values.remove_conflicting(x, y, value);
-            result = SimpleSolverResultInternal::FoundSomething;
+            result = SimpleSolverResult::FoundSomething;
             debug_assert!(!board.has_conflicts());
         } else {
             // We found no place where we can put this value
-            return SimpleSolverResultInternal::NotSolvable;
+            return SimpleSolverResult::NotSolvable;
         }
     }
 

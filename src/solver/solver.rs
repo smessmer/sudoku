@@ -109,16 +109,18 @@ impl<G: Guesser> SolverImpl<G> {
         res
     }
 
-    fn push(&mut self, board: Board, possible_values: PossibleValues) {
-        match solve_simple_strategies(board, possible_values) {
-            SimpleSolverResult::FoundSomething {
-                board: new_board,
-                possible_values: new_possible_values,
-            } => {
-                debug_assert!(board.is_subset_of(&new_board));
-                self.board_stack.push((new_board, new_possible_values));
+    fn push(&mut self, mut board: Board, mut possible_values: PossibleValues) {
+        #[cfg(debug_assertions)]
+        let old_board = board;
+        match solve_simple_strategies(&mut board, &mut possible_values) {
+            SimpleSolverResult::FoundSomething => {
+                #[cfg(debug_assertions)]
+                debug_assert!(old_board.is_subset_of(&board));
+                self.board_stack.push((board, possible_values));
             }
             SimpleSolverResult::FoundNothing => {
+                #[cfg(debug_assertions)]
+                debug_assert!(old_board == board);
                 self.board_stack.push((board, possible_values));
             }
             SimpleSolverResult::NotSolvable => {
