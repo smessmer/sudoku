@@ -17,13 +17,31 @@ pub fn solve_simple_strategies(
     mut board: Board,
     mut possible_values: PossibleValues,
 ) -> SimpleSolverResult {
-    match _solve_simple_strategies(&mut board, &mut possible_values) {
-        SimpleSolverResultInternal::FoundSomething => SimpleSolverResult::FoundSomething {
-            board,
-            possible_values,
-        },
-        SimpleSolverResultInternal::FoundNothing => SimpleSolverResult::FoundNothing,
-        SimpleSolverResultInternal::NotSolvable => SimpleSolverResult::NotSolvable,
+    let mut found_something_previous_iteration = false;
+    loop {
+        match _solve_simple_strategies(&mut board, &mut possible_values) {
+            SimpleSolverResultInternal::FoundSomething => {
+                found_something_previous_iteration = true;
+            }
+            SimpleSolverResultInternal::FoundNothing => {
+                if found_something_previous_iteration {
+                    // We found something in a previous iteration, just didn't find anything after that.
+                    // But we can return what we found previously.
+                    return SimpleSolverResult::FoundSomething {
+                        board,
+                        possible_values,
+                    };
+                } else {
+                    // We didn't find anything and this is the first iteration. Return that we didn't find anything.
+                    return SimpleSolverResult::FoundNothing;
+                }
+            }
+            SimpleSolverResultInternal::NotSolvable => {
+                // This might be the first iteration or we may have found something in a previous iteration, but since we ended up in a not solvable dead end,
+                // anything we found previously doesn't matter. The whole Sudoku isn't solvable.
+                return SimpleSolverResult::NotSolvable;
+            }
+        }
     }
 }
 
@@ -68,6 +86,7 @@ fn solve_known_values(
     board: &mut Board,
     possible_values: &mut PossibleValues,
 ) -> SimpleSolverResultInternal {
+    // TODO Instead of using solve_known_values to run over all fields repeatedly, it would be more efficient to just check number of remaining values whenever we update PossibleValues. Then remove this simple solver strategy here.
     let mut result = SimpleSolverResultInternal::FoundNothing;
 
     for x in 0..WIDTH {
