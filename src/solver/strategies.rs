@@ -15,33 +15,6 @@ pub fn solve_simple_strategies(
     board: &mut Board,
     possible_values: &mut PossibleValues,
 ) -> SimpleSolverResult {
-    let mut previous_iteration_result = SimpleSolverResult::FoundNothing;
-
-    loop {
-        match _solve_simple_strategies(board, possible_values) {
-            SimpleSolverResult::FoundSomething => {
-                previous_iteration_result = SimpleSolverResult::FoundSomething;
-
-                // TODO For some reason, our benchmarks say it would be faster to abort here and return FoundSomething instead of continuing to find more values.
-            }
-            SimpleSolverResult::FoundNothing => {
-                // We may or may not have found something in a previous iteration, just didn't find anything in the current iteration.
-                // But we can return what we found previously.
-                return previous_iteration_result;
-            }
-            SimpleSolverResult::NotSolvable => {
-                // This might be the first iteration or we may have found something in a previous iteration, but since we ended up in a not solvable dead end,
-                // anything we found previously doesn't matter. The whole Sudoku isn't solvable.
-                return SimpleSolverResult::NotSolvable;
-            }
-        }
-    }
-}
-
-fn _solve_simple_strategies(
-    board: &mut Board,
-    possible_values: &mut PossibleValues,
-) -> SimpleSolverResult {
     let mut result = SimpleSolverResult::FoundNothing;
 
     match solve_known_values(board, possible_values) {
@@ -64,6 +37,11 @@ fn _solve_simple_strategies(
         SimpleSolverResult::NotSolvable => return SimpleSolverResult::NotSolvable,
     }
 
+    // Note: at first glance, it sounds smart to repeat this in a loop until no more progress is made.
+    //       But our benchmarks show that this actually slows things down by 20%. Probably guessing values
+    //       is cheap enough that it's better to just try guessing earlier instead of spending more time
+    //       on the off chance that adding a new value will help us deduce more values.
+
     result
 }
 
@@ -74,6 +52,8 @@ fn solve_known_values(
     possible_values: &mut PossibleValues,
 ) -> SimpleSolverResult {
     // TODO Instead of using solve_known_values to run over all fields repeatedly, it would be more efficient to just check number of remaining values whenever we update PossibleValues. Then remove this simple solver strategy here.
+    //      Also, can we do the same for other strategies? e.g. for hidden values, each time we set a value, check if that creates a hidden candidate in the same row/col/region?
+    //      Maybe we should introduce a SolvingBoard struct that wraps Board and PossibleValues and provides methods to set values and with each value being set, it applies all simple strategies for all fields that could be affected by this new value.
     let mut result = SimpleSolverResult::FoundNothing;
 
     for x in 0..WIDTH {
