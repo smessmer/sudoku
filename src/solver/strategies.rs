@@ -22,6 +22,8 @@ pub fn solve_simple_strategies(
         match _solve_simple_strategies(&mut board, &mut possible_values) {
             SimpleSolverResultInternal::FoundSomething => {
                 found_something_previous_iteration = true;
+
+                // TODO For some reason, our benchmarks say it would be faster to abort here and return FoundSomething instead of continuing to find more values.
             }
             SimpleSolverResultInternal::FoundNothing => {
                 if found_something_previous_iteration {
