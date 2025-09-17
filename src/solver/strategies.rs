@@ -13,51 +13,62 @@ pub enum SimpleSolverResult {
 }
 
 /// [solve_simple_strategies] tries some fast strategies to add values on the board that can easily be deduced from other values.
-/// It returns
 pub fn solve_simple_strategies(
     mut board: Board,
     mut possible_values: PossibleValues,
 ) -> SimpleSolverResult {
-    let mut found_something = false;
-
-    match solve_known_values(&mut board, &mut possible_values) {
-        Some(true) => {
-            found_something = true;
-        }
-        Some(false) => {
-            // didn't find anything
-        }
-        None => return SimpleSolverResult::NotSolvable,
-    }
-
-    match solve_hidden_candidates(&mut board, &mut possible_values) {
-        Some(true) => {
-            found_something = true;
-        }
-        Some(false) => {
-            // didn't find anything
-        }
-        None => return SimpleSolverResult::NotSolvable,
-    }
-
-    if found_something {
-        SimpleSolverResult::FoundSomething {
+    match _solve_simple_strategies(&mut board, &mut possible_values) {
+        SimpleSolverResultInternal::FoundSomething => SimpleSolverResult::FoundSomething {
             board,
             possible_values,
-        }
-    } else {
-        SimpleSolverResult::FoundNothing
+        },
+        SimpleSolverResultInternal::FoundNothing => SimpleSolverResult::FoundNothing,
+        SimpleSolverResultInternal::NotSolvable => SimpleSolverResult::NotSolvable,
     }
+}
+
+enum SimpleSolverResultInternal {
+    FoundSomething,
+    FoundNothing,
+    NotSolvable,
+}
+
+fn _solve_simple_strategies(
+    board: &mut Board,
+    possible_values: &mut PossibleValues,
+) -> SimpleSolverResultInternal {
+    let mut result = SimpleSolverResultInternal::FoundNothing;
+
+    match solve_known_values(board, possible_values) {
+        SimpleSolverResultInternal::FoundSomething => {
+            result = SimpleSolverResultInternal::FoundSomething;
+        }
+        SimpleSolverResultInternal::FoundNothing => {
+            // didn't find anything
+        }
+        SimpleSolverResultInternal::NotSolvable => return SimpleSolverResultInternal::NotSolvable,
+    }
+
+    match solve_hidden_candidates(board, possible_values) {
+        SimpleSolverResultInternal::FoundSomething => {
+            result = SimpleSolverResultInternal::FoundSomething;
+        }
+        SimpleSolverResultInternal::FoundNothing => {
+            // didn't find anything
+        }
+        SimpleSolverResultInternal::NotSolvable => return SimpleSolverResultInternal::NotSolvable,
+    }
+
+    result
 }
 
 /// [solve_known_values] tries to fill in fields that only have one possible value according to `possible_values`.
 /// It can also detect situations where a field has no possible values left, meaning that the board is unsolvable.
-/// It returns
-/// - `Some(true)` if it found something and the board was changed
-/// - `Some(false)` if it found nothing (this doesn't mean that the board is unsolvable, just that the strategy failed)
-/// - `None` if the board is unsolvable
-fn solve_known_values(board: &mut Board, possible_values: &mut PossibleValues) -> Option<bool> {
-    let mut found_something = false;
+fn solve_known_values(
+    board: &mut Board,
+    possible_values: &mut PossibleValues,
+) -> SimpleSolverResultInternal {
+    let mut result = SimpleSolverResultInternal::FoundNothing;
 
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
@@ -67,7 +78,7 @@ fn solve_known_values(board: &mut Board, possible_values: &mut PossibleValues) -
                     possible_values.possible_values_for_field(x, y);
                 let Some(first_possible_value) = possible_values_this_field.next() else {
                     // No possible values left for this field. The board is not solvable.
-                    return None;
+                    return SimpleSolverResultInternal::NotSolvable;
                 };
                 let second_possible_value = possible_values_this_field.next();
                 std::mem::drop(possible_values_this_field);
@@ -76,39 +87,47 @@ fn solve_known_values(board: &mut Board, possible_values: &mut PossibleValues) -
                     field.set(Some(first_possible_value));
                     possible_values.remove_conflicting(x, y, first_possible_value);
                     debug_assert!(!board.has_conflicts());
-                    found_something = true;
+                    result = SimpleSolverResultInternal::FoundSomething;
                 }
             }
         }
     }
 
-    Some(found_something)
+    result
 }
 
 /// [solve_hidden_candidates] tries to fill hidden candidates, i.e. values that only have one possible position in a row, column or 3x3 region.
-/// It returns
-/// - `Some(true)` if it found something and the board was changed
-/// - `Some(false)` if it found nothing (this doesn't mean that the board is unsolvable, just that the strategy failed)
-/// - `None` if the board is unsolvable
 fn solve_hidden_candidates(
     board: &mut Board,
     possible_values: &mut PossibleValues,
-) -> Option<bool> {
-    let mut found_something = false;
+) -> SimpleSolverResultInternal {
+    let mut result = SimpleSolverResultInternal::FoundNothing;
 
     // Check each row for values that can only be placed in one field
     for row in 0u8..HEIGHT as u8 {
         let cells = (0u8..WIDTH as u8).map(|x| (x, row));
-        if _solve_hidden_candidates(board, possible_values, cells)? {
-            found_something = true;
+        match _solve_hidden_candidates(board, possible_values, cells) {
+            SimpleSolverResultInternal::FoundSomething => {
+                result = SimpleSolverResultInternal::FoundSomething;
+            }
+            SimpleSolverResultInternal::FoundNothing => {}
+            SimpleSolverResultInternal::NotSolvable => {
+                return SimpleSolverResultInternal::NotSolvable;
+            }
         }
     }
 
     // Check each col for values that can only be placed in one field
     for col in 0u8..WIDTH as u8 {
         let cells = (0u8..HEIGHT as u8).map(|y| (col, y));
-        if _solve_hidden_candidates(board, possible_values, cells)? {
-            found_something = true;
+        match _solve_hidden_candidates(board, possible_values, cells) {
+            SimpleSolverResultInternal::FoundSomething => {
+                result = SimpleSolverResultInternal::FoundSomething;
+            }
+            SimpleSolverResultInternal::FoundNothing => {}
+            SimpleSolverResultInternal::NotSolvable => {
+                return SimpleSolverResultInternal::NotSolvable;
+            }
         }
     }
 
@@ -117,13 +136,19 @@ fn solve_hidden_candidates(
         for region_y in 0u8..3u8 {
             let cells = (0u8..3u8)
                 .flat_map(move |x| (0u8..3u8).map(move |y| (region_x * 3 + x, region_y * 3 + y)));
-            if _solve_hidden_candidates(board, possible_values, cells)? {
-                found_something = true;
+            match _solve_hidden_candidates(board, possible_values, cells) {
+                SimpleSolverResultInternal::FoundSomething => {
+                    result = SimpleSolverResultInternal::FoundSomething;
+                }
+                SimpleSolverResultInternal::FoundNothing => {}
+                SimpleSolverResultInternal::NotSolvable => {
+                    return SimpleSolverResultInternal::NotSolvable;
+                }
             }
         }
     }
 
-    Some(found_something)
+    result
 }
 
 #[must_use]
@@ -131,8 +156,8 @@ fn _solve_hidden_candidates(
     board: &mut Board,
     possible_values: &mut PossibleValues,
     field_coords: impl Iterator<Item = (u8, u8)> + Clone,
-) -> Option<bool> {
-    let mut found_something = false;
+) -> SimpleSolverResultInternal {
+    let mut result = SimpleSolverResultInternal::FoundNothing;
 
     'outer: for value in 1u8..=MAX_VALUE {
         let value = NonZeroU8::new(value).unwrap();
@@ -164,13 +189,13 @@ fn _solve_hidden_candidates(
             let y = y as usize;
             board.field_mut(x, y).set(Some(value));
             possible_values.remove_conflicting(x, y, value);
-            found_something = true;
+            result = SimpleSolverResultInternal::FoundSomething;
             debug_assert!(!board.has_conflicts());
         } else {
             // We found no place where we can put this value
-            return None;
+            return SimpleSolverResultInternal::NotSolvable;
         }
     }
 
-    Some(found_something)
+    result
 }
