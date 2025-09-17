@@ -2,13 +2,15 @@ use rand::seq::SliceRandom;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use super::solver::{SolverError, solve, generate_solved};
 use super::board::{Board, HEIGHT, WIDTH};
+use super::solver::{generate_solved, solve, SolverError};
 
 pub fn generate() -> Board {
     let mut board = generate_solved();
-    let mut all_fields: Vec<(u8, u8)> = (0u8..HEIGHT as u8).flat_map(|x| (0u8..WIDTH as u8).map(move |y| (x, y))).collect();
-    all_fields.shuffle(&mut rand::thread_rng());
+    let mut all_fields: Vec<(u8, u8)> = (0u8..HEIGHT as u8)
+        .flat_map(|x| (0u8..WIDTH as u8).map(move |y| (x, y)))
+        .collect();
+    all_fields.shuffle(&mut rand::rng());
     for (x, y) in all_fields {
         remove_field_if_unambigious(&mut board, x as usize, y as usize);
     }
@@ -43,8 +45,10 @@ fn _remove_max(board: Board, best_board: Arc<Mutex<(usize, Board)>>) {
         // and drop the lock
     }
 
-    let mut all_fields: Vec<(u8, u8)> = (0u8..HEIGHT as u8).flat_map(|x| (0u8..WIDTH as u8).map(move |y| (x, y))).collect();
-    all_fields.shuffle(&mut rand::thread_rng());
+    let mut all_fields: Vec<(u8, u8)> = (0u8..HEIGHT as u8)
+        .flat_map(|x| (0u8..WIDTH as u8).map(move |y| (x, y)))
+        .collect();
+    all_fields.shuffle(&mut rand::rng());
     all_fields.par_iter().for_each(move |(x, y)| {
         let mut board = board;
         if remove_field_if_unambigious(&mut board, *x as usize, *y as usize) {

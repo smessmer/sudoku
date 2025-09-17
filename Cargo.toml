@@ -9,10 +9,10 @@ edition = "2021"
 criterion = {version = "^0.4", features = ["html_reports"]}
 
 [dependencies]
-rand = "^0.8.5"
-bitvec = "^1.0.1"
-itertools = "^0.11.0"
-thiserror = "^1.0.40"
+rand = "^0.9"
+bitvec = "^1"
+itertools = "^0.14"
+thiserror = "^2.0"
 rayon = "^1.7.0"
 
 [profile.release]

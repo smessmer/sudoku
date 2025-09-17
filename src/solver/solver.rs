@@ -1,5 +1,5 @@
+use rand::{rng, rngs::ThreadRng, seq::IndexedRandom as _};
 use std::num::NonZeroU8;
-use rand::{seq::SliceRandom, rngs::ThreadRng, thread_rng};
 
 use super::{
     possible_values::PossibleValues,
@@ -30,14 +30,19 @@ pub struct Generator {
 impl Generator {
     pub fn new() -> Self {
         Self {
-            solver_impl: SolverImpl::new(Board::new_empty(), GuessRandomPossibleValue { rng: thread_rng() }),
+            solver_impl: SolverImpl::new(
+                Board::new_empty(),
+                GuessRandomPossibleValue { rng: rng() },
+            ),
         }
     }
 
     // We're taking `self` by value because this should only be called once. If we call `solver_impl.next_solution` multiple times,
     // the two solutions would be very similar.
     pub fn generate(mut self) -> Board {
-        self.solver_impl.next_solution().expect("An empty sudoku must have at least one solution")
+        self.solver_impl
+            .next_solution()
+            .expect("An empty sudoku must have at least one solution")
     }
 }
 
@@ -45,12 +50,22 @@ impl Generator {
 /// Guessing random values is useful for generating new sudokus by running the solver on an empty sudoku with random guesses.
 /// For solving a given sudoku, guessing the first possible value is faster.
 trait Guesser {
-    fn guess_value(&mut self, possible_values: &PossibleValues, x: usize, y: usize) -> Option<NonZeroU8>;
+    fn guess_value(
+        &mut self,
+        possible_values: &PossibleValues,
+        x: usize,
+        y: usize,
+    ) -> Option<NonZeroU8>;
 }
 
 struct GuessFirstPossibleValue;
 impl Guesser for GuessFirstPossibleValue {
-    fn guess_value(&mut self, possible_values: &PossibleValues, x: usize, y: usize) -> Option<NonZeroU8> {
+    fn guess_value(
+        &mut self,
+        possible_values: &PossibleValues,
+        x: usize,
+        y: usize,
+    ) -> Option<NonZeroU8> {
         possible_values.first_possible_value_for_field(x, y)
     }
 }
@@ -59,7 +74,12 @@ struct GuessRandomPossibleValue {
     rng: ThreadRng,
 }
 impl Guesser for GuessRandomPossibleValue {
-    fn guess_value(&mut self, possible_values: &PossibleValues, x: usize, y: usize) -> Option<NonZeroU8> {
+    fn guess_value(
+        &mut self,
+        possible_values: &PossibleValues,
+        x: usize,
+        y: usize,
+    ) -> Option<NonZeroU8> {
         // TODO Do this without first collecting into Vec. Should be possible if the iterator is ExactSizeIterator.
         let values: Vec<NonZeroU8> = possible_values.possible_values_for_field(x, y).collect();
         values.choose(&mut self.rng).copied()
@@ -78,7 +98,7 @@ struct SolverImpl<G: Guesser> {
     guesser: G,
 }
 
-impl <G: Guesser> SolverImpl<G> {
+impl<G: Guesser> SolverImpl<G> {
     pub fn new(board: Board, guesser: G) -> Self {
         let possible_values = PossibleValues::from_board(&board);
         let mut res = Self {

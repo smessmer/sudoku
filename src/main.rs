@@ -1,4 +1,4 @@
-use sudoku::{generate, generate_max_empty};
+use sudoku::generate_max_empty;
 
 fn main() {
     let board = generate_max_empty();

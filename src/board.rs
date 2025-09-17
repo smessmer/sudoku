@@ -212,8 +212,8 @@ impl Board {
     pub fn is_subset_of(&self, rhs: &Board) -> bool {
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
-                if let Some(lhs_value) = self.field(x,y).get() {
-                    if Some(lhs_value) != rhs.field(x,y).get() {
+                if let Some(lhs_value) = self.field(x, y).get() {
+                    if Some(lhs_value) != rhs.field(x, y).get() {
                         return false;
                     }
                 }
@@ -227,7 +227,7 @@ impl Board {
         let mut num_empty = 0;
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
-                if self.field(x,y).is_empty() {
+                if self.field(x, y).is_empty() {
                     num_empty += 1;
                 }
             }
@@ -294,14 +294,14 @@ mod tests {
             for y in 0..HEIGHT {
                 board
                     .field_mut(x, y)
-                    .set(NonZeroU8::new(rng.gen_range(0..=9)));
+                    .set(NonZeroU8::new(rng.random_range(0..=9)));
             }
         }
 
         let mut rng = StdRng::seed_from_u64(0);
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
-                let expected = NonZeroU8::new(rng.gen_range(0..=9));
+                let expected = NonZeroU8::new(rng.random_range(0..=9));
                 assert_eq!(expected, board.field(x, y).get());
                 assert_eq!(expected, board.field_mut(x, y).get());
                 assert_eq!(expected.is_none(), board.field(x, y).is_empty());
