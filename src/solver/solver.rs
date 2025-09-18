@@ -5,7 +5,7 @@ use super::{
     possible_values::PossibleValues,
     strategies::{SimpleSolverResult, solve_simple_strategies},
 };
-use crate::board::Board;
+use crate::{board::Board, solver::board_being_solved::BoardBeingSolved};
 
 pub struct Solver {
     solver_impl: SolverImpl<GuessFirstPossibleValue>,
@@ -93,35 +93,35 @@ struct SolverImpl<G: Guesser> {
     // If the stack is empty, then there are no more solutions left.
     // The PossibleValues part of the tuple is equivalent to [PossibleValues::from_board](board), with the difference that we removed values we already guessed to
     // create previous solutions. This ensures we don't guess the same value again after backtracking.
-    board_stack: Vec<(Board, PossibleValues)>,
+    board_stack: Vec<BoardBeingSolved>,
 
     guesser: G,
 }
 
 impl<G: Guesser> SolverImpl<G> {
     pub fn new(board: Board, guesser: G) -> Self {
-        let possible_values = PossibleValues::from_board(&board);
+        let board = BoardBeingSolved::new(board);
         let mut res = Self {
             board_stack: vec![],
             guesser,
         };
-        res.push(board, possible_values);
+        res.push(board);
         res
     }
 
-    fn push(&mut self, mut board: Board, mut possible_values: PossibleValues) {
+    fn push(&mut self, mut board: BoardBeingSolved) {
         #[cfg(debug_assertions)]
-        let old_board = board;
-        match solve_simple_strategies(&mut board, &mut possible_values) {
+        let old_board = *board.board();
+        match solve_simple_strategies(&mut board) {
             SimpleSolverResult::FoundSomething => {
                 #[cfg(debug_assertions)]
-                debug_assert!(old_board.is_subset_of(&board));
-                self.board_stack.push((board, possible_values));
+                debug_assert!(old_board.is_subset_of(board.board()));
+                self.board_stack.push(board);
             }
             SimpleSolverResult::FoundNothing => {
                 #[cfg(debug_assertions)]
-                debug_assert!(old_board == board);
-                self.board_stack.push((board, possible_values));
+                debug_assert!(old_board == *board.board());
+                self.board_stack.push(board);
             }
             SimpleSolverResult::NotSolvable => {
                 // This board is not solvable. Don't even add it.
@@ -131,20 +131,19 @@ impl<G: Guesser> SolverImpl<G> {
 
     pub fn next_solution(&mut self) -> Option<Board> {
         loop {
-            let Some((board, possible_values)) = self.board_stack.last() else {
+            let Some(board) = self.board_stack.last() else {
                 // No more solutions left
                 return None;
             };
-            let board = *board;
-            let possible_values = *possible_values;
-            match board.first_empty_field_index() {
+            match board.board().first_empty_field_index() {
                 None => {
                     // No empty fields left. The sudoku is fully solved.
+                    let board = *board.board();
                     self.board_stack.pop().unwrap();
                     return Some(board);
                 }
                 Some((x, y)) => {
-                    match self.guesser.guess_value(&possible_values, x, y) {
+                    match self.guesser.guess_value(&board.possible_values(), x, y) {
                         None => {
                             // No possible values left for this field. This means that the board on top doesn't have any more solutions.
                             // Remove it and continue guessing for boards below it.
@@ -154,18 +153,17 @@ impl<G: Guesser> SolverImpl<G> {
                             continue;
                         }
                         Some(value) => {
+                            let mut board = *board;
+
                             // Remove this from the possible values of the *current* board so we don't try it again after backtracking to this stack entry
-                            self.board_stack.last_mut().unwrap().1.remove(x, y, value);
+                            self.board_stack
+                                .last_mut()
+                                .unwrap()
+                                .remove_possible_value(x, y, value);
 
                             // Make a guess for the value of this field
-                            let mut board = board;
-                            let mut field = board.field_mut(x, y);
-                            assert!(field.is_empty());
-                            field.set(Some(value));
-                            debug_assert!(!board.has_conflicts());
-                            let mut new_possible_values = possible_values;
-                            new_possible_values.remove_conflicting(x, y, value);
-                            self.push(board, new_possible_values);
+                            board.set_empty_field_to(x, y, value);
+                            self.push(board);
 
                             // Now that we guessed a value, continue the loop with the next iteration to either return a solution or keep guessing if necessary.
                             continue;

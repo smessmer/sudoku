@@ -8,6 +8,8 @@ mod solver;
 mod strategies;
 use solver::{Generator, Solver};
 
+mod board_being_solved;
+
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SolverError {
     #[error("Sudoku is not solvable")]
