@@ -1,10 +1,7 @@
 use rand::{rng, rngs::ThreadRng, seq::IndexedRandom as _};
 use std::num::NonZeroU8;
 
-use super::{
-    possible_values::PossibleValues,
-    strategies::{SimpleSolverResult, solve_simple_strategies},
-};
+use super::{possible_values::PossibleValues, strategies::SimpleSolverResult};
 use crate::{board::Board, solver::board_being_solved::BoardBeingSolved};
 
 pub struct Solver {
@@ -105,28 +102,14 @@ impl<G: Guesser> SolverImpl<G> {
             board_stack: vec![],
             guesser,
         };
-        res.push(board);
+        if let Some(board) = board {
+            res.push(board);
+        }
         res
     }
 
-    fn push(&mut self, mut board: BoardBeingSolved) {
-        #[cfg(debug_assertions)]
-        let old_board = *board.board();
-        match solve_simple_strategies(&mut board) {
-            SimpleSolverResult::FoundSomething => {
-                #[cfg(debug_assertions)]
-                debug_assert!(old_board.is_subset_of(board.board()));
-                self.board_stack.push(board);
-            }
-            SimpleSolverResult::FoundNothing => {
-                #[cfg(debug_assertions)]
-                debug_assert!(old_board == *board.board());
-                self.board_stack.push(board);
-            }
-            SimpleSolverResult::NotSolvable => {
-                // This board is not solvable. Don't even add it.
-            }
-        }
+    fn push(&mut self, board: BoardBeingSolved) {
+        self.board_stack.push(board);
     }
 
     pub fn next_solution(&mut self) -> Option<Board> {
@@ -162,8 +145,18 @@ impl<G: Guesser> SolverImpl<G> {
                                 .remove_possible_value(x, y, value);
 
                             // Make a guess for the value of this field
-                            board.set_empty_field_to(x, y, value);
-                            self.push(board);
+                            match board
+                                .set_empty_field_to_value_and_apply_simple_strategies(x, y, value)
+                            {
+                                SimpleSolverResult::NotSolvable => {
+                                    // This board is not solvable. Don't even add it.
+                                }
+                                SimpleSolverResult::FoundNothing
+                                | SimpleSolverResult::FoundSomething => {
+                                    // This board might be solvable. Add it to the stack to explore this branch.
+                                    self.push(board);
+                                }
+                            }
 
                             // Now that we guessed a value, continue the loop with the next iteration to either return a solution or keep guessing if necessary.
                             continue;

@@ -1,6 +1,15 @@
 use std::num::NonZeroU8;
 
-use crate::{Board, solver::possible_values::PossibleValues};
+use crate::{
+    Board,
+    solver::{
+        possible_values::PossibleValues,
+        strategies::{
+            SimpleSolverResult, solve_simple_strategies,
+            solve_simple_strategies_triggered_by_modification,
+        },
+    },
+};
 
 /// A struct representing a Sudoku board that is currently being solved.
 #[derive(Clone, Copy)]
@@ -16,11 +25,20 @@ pub struct BoardBeingSolved {
 
 impl BoardBeingSolved {
     /// Creates a new `BoardBeingSolved` from the given `Board`.
-    pub fn new(board: Board) -> Self {
+    /// This may return `None` if the given board is not solvable.
+    /// If this returns `Some`, then the board may or may not be solvable.
+    pub fn new(board: Board) -> Option<Self> {
         let possible_values = PossibleValues::from_board(&board);
-        Self {
+        let mut this = Self {
             board,
             possible_values,
+        };
+        match solve_simple_strategies(&mut this) {
+            SimpleSolverResult::FoundSomething | SimpleSolverResult::FoundNothing => Some(this),
+            SimpleSolverResult::NotSolvable => {
+                // The initial board is not solvable.
+                None
+            }
         }
     }
 
@@ -42,12 +60,20 @@ impl BoardBeingSolved {
         self.board.field(x, y).is_empty()
     }
 
-    pub fn set_empty_field_to(&mut self, x: usize, y: usize, value: NonZeroU8) {
+    pub fn set_empty_field_to_value_and_apply_simple_strategies(
+        &mut self,
+        x: usize,
+        y: usize,
+        value: NonZeroU8,
+    ) -> SimpleSolverResult {
         let mut field = self.board.field_mut(x, y);
         assert!(field.is_empty());
         field.set(Some(value));
         debug_assert!(!self.board.has_conflicts());
         self.possible_values.remove_conflicting(x, y, value);
+
+        // Now the board changed. See if we can deduce more values from that.
+        solve_simple_strategies_triggered_by_modification(self, x as u8, y as u8)
     }
 
     pub fn remove_possible_value(&mut self, x: usize, y: usize, value: NonZeroU8) {
